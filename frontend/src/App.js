@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
 
 
-const API_BASE = process.env.REACT_APP_API_BASE || 'https://olo-87gs.vercel.app';
+const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:8000';
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
