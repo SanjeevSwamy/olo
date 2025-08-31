@@ -1,48 +1,409 @@
-@import 'tailwindcss/base';
-@import 'tailwindcss/components';
-@import 'tailwindcss/utilities';
+/* Retro Hacker Theme 2000s Style */
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono:wght@400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
 
-/* Custom scrollbar for hashtag navigation */
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+:root {
+  --neon-green: #00ff41;
+  --dark-green: #008f11;
+  --matrix-black: #000000;
+  --terminal-bg: #0a0a0a;
+  --terminal-border: #00ff41;
+  --error-red: #ff0040;
+  --warning-orange: #ffaa00;
+  --cyber-blue: #00aaff;
 }
 
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-/* Custom animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
+/* Matrix Rain Background Animation```
+@keyframes matrix-rain {
+  0% { transform: translateY(-100vh); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+
+/* Flickering Text Animation */
+@keyframes flicker {
+  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+    text-shadow: 
+      -0.2rem 0 0 var(--neon-green),
+      0.2rem 0 0 var(--cyber-blue),
+      0 0 2rem var(--neon-green);
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  20%, 24%, 55% {
+    text-shadow: none;
   }
 }
 
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease-out;
+/* Glowing Border Animation */
+@keyframes glow-border {
+  0%, 100% { 
+    box-shadow: 
+      0 0 5px var(--neon-green),
+      0 0 10px var(--neon-green),
+      0 0 15px var(--neon-green);
+  }
+  50% { 
+    box-shadow: 
+      0 0 10px var(--neon-green),
+      0 0 20px var(--neon-green),
+      0 0 30px var(--neon-green);
+  }
 }
 
-/* Focus styles */
-input:focus, textarea:focus, select:focus {
+/* Typing Cursor Animation */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* Main Body Styling */
+body {
+  font-family: 'Share Tech Mono', monospace;
+  background: var(--matrix-black);
+  color: var(--neon-green);
+  overflow-x: hidden;
+  line-height: 1.4;
+}
+
+/* Matrix Rain Background Effect */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(ellipse at center, transparent 0%, rgba(0, 0, 0, 0.8) 100%),
+    linear-gradient(90deg, transparent 0%, rgba(0, 255, 65, 0.03) 50%, transparent 100%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Hacker-style Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--matrix-black);
+  border-left: 1px solid var(--dark-green);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--neon-green);
+  border-radius: 4px;
+  box-shadow: 0 0 10px var(--neon-green);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--cyber-blue);
+  box-shadow: 0 0 15px var(--cyber-blue);
+}
+
+/* Terminal Window Styling */
+.terminal-window {
+  background: rgba(10, 10, 10, 0.95);
+  border: 2px solid var(--neon-green);
+  border-radius: 8px;
+  box-shadow: 
+    0 0 20px rgba(0, 255, 65, 0.3),
+    inset 0 0 20px rgba(0, 255, 65, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.terminal-window::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 255, 65, 0.03) 2px,
+      rgba(0, 255, 65, 0.03) 4px
+    );
+  pointer-events: none;
+}
+
+/* Terminal Header */
+.terminal-header {
+  background: var(--terminal-bg);
+  border-bottom: 1px solid var(--neon-green);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.terminal-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.terminal-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid;
+}
+
+.terminal-dot.close { 
+  background: var(--error-red); 
+  border-color: var(--error-red);
+  box-shadow: 0 0 8px var(--error-red);
+}
+
+.terminal-dot.minimize { 
+  background: var(--warning-orange); 
+  border-color: var(--warning-orange);
+  box-shadow: 0 0 8px var(--warning-orange);
+}
+
+.terminal-dot.maximize { 
+  background: var(--neon-green); 
+  border-color: var(--neon-green);
+  box-shadow: 0 0 8px var(--neon-green);
+}
+
+/* Terminal Text Styling */
+.terminal-text {
+  font-family: 'Share Tech Mono', monospace;```color: var(--neon-green);
+  text-shadow: 0 0 10px var(--neon-green);
+  letter-spacing: 0.5px;
+}
+
+.terminal-title {
+  font-family: 'Orbitron', monospace;
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: var(--neon-green);
+  text-transform: uppercase;
+  animation: flicker 3s infinite;
+  text-align: center;
+  margin: 1rem 0;
+}
+
+/* Hacker Button Styling */
+.hacker-button {
+  background: transparent;
+  border: 2px solid var(--neon-green);
+  color: var(--neon-green);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.9rem;
+  padding: 8px 16px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  position: relative;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.hacker-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--neon-green), transparent);
+  transition: left 0.5s;
+}
+
+.hacker-button:hover {
+  color: var(--matrix-black);
+  box-shadow: 
+    0 0 15px var(--neon-green),
+    inset 0 0 15px var(--neon-green);
+  animation: glow-border 1s infinite;
+}
+
+.hacker-button:hover::before {
+  left: 100%;
+}
+
+.hacker-button:active {
+  transform: scale(0.98);
+}
+
+/* Hacker Input Styling */
+.hacker-input {
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid var(--dark-green);
+  border-bottom: 2px solid var(--neon-green);
+  color: var(--neon-green);
+  font-family: 'Share Tech Mono', monospace``` font-size: 1rem;
+  padding: 12px;
+  width: 100%;
   outline: none;
+  transition: all 0.3s ease;
 }
 
-/* Loading spinner */
-.animate-spin {
+.hacker-input:focus {
+  border-color: var(--neon-green);
+  box-shadow: 
+    0 0 15px rgba(0, 255, 65, 0.5),
+    inset 0 0 15px rgba(0, 255, 65, 0.1);
+  text-shadow: 0 0 8px var(--neon-green);
+}
+
+.hacker-input::placeholder {
+  color: var(--dark-green);
+  opacity: 0.7;
+}
+
+/* Typing Cursor */
+.typing-cursor::after {
+  content: '▊';
+  color: var(--neon-green);
+  animation: blink 1s infinite;
+}
+
+/* Post Card Hacker Style */
+.hacker-post {
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px solid var(--dark-green);
+  border-left: 4px solid var(--neon-green);
+  margin: 1rem 0;
+  padding: 1rem;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.hacker-post:hover {
+  border-color: var(--neon-green);
+  box-shadow: 
+    0 0 20px rgba(0, 255, 65, 0.2),
+    inset 0 0 20px rgba(0, 255, 65, 0.05);
+}
+
+.hacker-post::before {
+  content: '> ';
+  color: var(--neon-green);
+  font-weight: bold;
+}
+
+/* Username Styling */
+.hacker-username {
+  color: var(--cyber-blue);
+  font-weight: bold;
+  text-shadow: 0 0 8px var(--cyber-blue);
+}
+
+.hacker-username::before {
+  content: 'user@college:~$ ';
+  color: var(--neon-green);
+}
+
+/* Hashtag Styling */
+.hacker-hashtag {
+  color: var(--warning-orange);
+  font-weight: bold;
+  text-shadow: 0 0 8px var(--warning-orange);
+}
+
+.hacker-hashtag::before {
+  content: '#/';
+}
+
+/* Matrix Navigation */
+.matrix-nav {
+  background: rgba(0, 0, 0, 0.95);
+  border-bottom: 2px solid var(--neon-green);
+  backdrop-filter: blur(10px);
+}
+
+.matrix-nav button {
+  background: transparent;
+  border: 1px solid var(--dark-green);
+  color: var(--neon-green);
+  font-family: 'Share Tech Mono', monospace;```padding: 8px 12px;
+  margin: 0 4px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+}
+
+.matrix-nav button:hover,
+.matrix-nav button.active {
+  background: var(--neon-green);
+  color: var(--matrix-black);
+  box-shadow: 0 0 15px var(--neon-green);
+  text-shadow: none;
+}
+
+/* Loading Animation */
+.matrix-loading {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--dark-green);
+  border-top: 2px solid var(--neon-green);
+  border-radius: 50%;
   animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
-  from {
-    transform: rotate(0deg);
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Glitch Effect for Errors */
+.glitch {
+  animation: glitch 0.3s infinite;
+}
+
+@keyframes glitch {
+  0% { transform: translate(0); }
+  20% { transform: translate(-2px, 2px); }
+  40% { transform: translate(-2px, -2px); }
+  60% { transform: translate(2px, 2px); }
+  80% { transform: translate(2px, -2px); }
+  100% { transform: translate(0); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .terminal-title {
+    font-size: 1.2rem;
   }
-  to {
-    transform: rotate(360deg);
+  
+  .hacker-button {
+    padding: 6px 12px;
+    font-size: 0.8rem;
   }
+  
+  .hacker-input {
+    font-size: 0.9rem;
+    padding: 10px;
+  }
+}
+
+/* Status Indicators */
+.status-online {
+  color: var(--neon-green);
+  text-shadow: 0 0 8px var(--neon-green);
+}
+
+.status-offline {
+  color: var(--error-red);
+  text-shadow: 0 0 8px var(--error-red);
+}
+
+.status-warning {
+  color: var(--warning-orange);
+  text-shadow: 0 0 8px var(--warning-orange);
 }
