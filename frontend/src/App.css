@@ -5,6 +5,7 @@
 :root {
   --neon-green: #4CAF4F;
   --dark-green: #008f11;
+  --white-colour: #FFFFFF;
   --matrix-black: #000000;
   --terminal-bg: #0a0a0a;
   --terminal-border: #00ff41;
@@ -172,8 +173,8 @@ body::before {
 /* Terminal Text Styling */
 .terminal-text {
   font-family: 'Share Tech Mono', monospace;
-  color: var(--neon-green);
-  text-shadow: 0 0 10px var(--neon-green);
+  color: var(--white-colour);
+  text-shadow: 0 0 10px var(--white-colour);
   letter-spacing: 0.5px;
 }
 
