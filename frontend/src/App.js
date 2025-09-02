@@ -15,8 +15,8 @@ function App() {
   const [replyingTo, setReplyingTo] = useState(null);
   const [userReactions, setUserReactions] = useState({});
 
-  const hashtags = ['General', 'Trip', 'College Events', 'Studies', 'Memes', 'Jobs', 'Confessions', 'Sports'];
-
+  const hashtags = ['General', 'Trip', 'CollegeEvents', 'Studies', 'Memes', 'Jobs', 'Confessions', 'Sports'];
+  
   const fetchPosts = useCallback(async (offset = 0) => {
     try {
       const response = await fetch(`${API_BASE}/posts/${currentHashtag}?limit=20&offset=${offset}`, {
@@ -242,28 +242,44 @@ function App() {
     }
   };
 
-  const reportPost = async (postId) => {
-    const confirmed = window.confirm('Are you sure you want to report this post?');
-    if (!confirmed) return;
-    
+ const reportPost = async (postId) => {
+  const confirmed = window.confirm('Are you sure you want to report this post?');
+  if (!confirmed) return;
+  
+  // 🔍 DEBUG: Add token validation
+  console.log('🔍 Token being sent:', token);
+  if (token) {
     try {
-      const response = await fetch(`${API_BASE}/posts/${postId}/report`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        alert(`Report submitted. ${data.report_count}/${data.threshold} reports needed for removal.`);
-        fetchPosts();
-      } else {
-        const error = await response.json();
-        alert(error.detail || 'Report failed');
-      }
-    } catch (error) {
-      alert('Report failed');
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      console.log('🔍 Token payload:', payload);
+      console.log('🔍 Token expires:', new Date(payload.exp * 1000));
+      console.log('🔍 Current time:', new Date());
+    } catch (e) {
+      console.error('❌ Token is malformed:', e);
     }
-  };
+  }
+  
+  try {
+    const response = await fetch(`${API_BASE}/posts/${postId}/report`, {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'  // ✅ ADD THIS LINE!
+      }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      alert(`Report submitted. ${data.report_count}/${data.threshold} reports needed for removal.`);
+      fetchPosts();
+    } else {
+      const error = await response.json();
+      alert(error.detail || 'Report failed');
+    }
+  } catch (error) {
+    alert('Report failed');
+  }
+};
 
   const handleReply = (post) => {
     setReplyingTo(post);
