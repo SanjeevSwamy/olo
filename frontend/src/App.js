@@ -15,7 +15,7 @@ function App() {
   const [replyingTo, setReplyingTo] = useState(null);
   const [userReactions, setUserReactions] = useState({});
 
-  const hashtags = ['General', 'Trip', 'CollegeEvents', 'Studies', 'Memes', 'Jobs', 'Confessions', 'Sports'];
+  const hashtags = ['General', 'Trip', 'College Events', 'Studies', 'Memes', 'Jobs', 'Confessions', 'Sports'];
 
   const fetchPosts = useCallback(async (offset = 0) => {
     try {
@@ -121,13 +121,13 @@ function App() {
         setUsername(data.username);
         localStorage.setItem('token', data.token);
         setTimeout(() => {
-          alert(`ACCESS GRANTED! Welcome ${data.username} to the network!`);
+          alert(`Welcome ${data.username}! You're now connected to the network.`);
         }, 500);
       } else {
         throw new Error(data.detail || 'Login failed');
       }
     } catch (error) {
-      alert(`ACCESS DENIED: ${error.message}`);
+      alert(`Login failed: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -170,14 +170,14 @@ function App() {
 
   const reactToPost = async (postId, reactionType, isReply = false) => {
     if (loadingReactions[postId]) return;
-
     setLoadingReactions(prev => ({ ...prev, [postId]: true }));
+    
     const currentReaction = userReactions[postId];
     const oldPosts = posts;
     const newReactionState = currentReaction === reactionType ? null : reactionType;
-
+    
     setUserReactions(prev => ({ ...prev, [postId]: newReactionState }));
-
+    
     setPosts(prevPosts => {
       const getUpdatedItem = (item) => {
         if (item.id !== postId) return item;
@@ -200,7 +200,7 @@ function App() {
         
         return newItem;
       };
-
+      
       return prevPosts.map(post => {
         if (isReply && post.replies) {
           return { ...post, replies: post.replies.map(getUpdatedItem) };
@@ -215,9 +215,8 @@ function App() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ type: reactionType })
       });
-
+      
       if (!response.ok) throw new Error('Server error');
-
       const data = await response.json();
       
       setUserReactions(prev => ({ ...prev, [postId]: data.user_reaction }));
@@ -244,7 +243,7 @@ function App() {
   };
 
   const reportPost = async (postId) => {
-    const confirmed = window.confirm('CONFIRM: Report this transmission?');
+    const confirmed = window.confirm('Are you sure you want to report this post?');
     if (!confirmed) return;
     
     try {
@@ -255,7 +254,7 @@ function App() {
       
       if (response.ok) {
         const data = await response.json();
-        alert(`REPORT SUBMITTED: ${data.report_count}/${data.threshold} reports needed for auto-removal.`);
+        alert(`Report submitted. ${data.report_count}/${data.threshold} reports needed for removal.`);
         fetchPosts();
       } else {
         const error = await response.json();
@@ -313,70 +312,20 @@ function App() {
   };
 
   if (!token) {
-    return <HackerLoginPage onLogin={handleLogin} onClearCache={clearCache} loading={loading} />;
+    return <LoginPage onLogin={handleLogin} onClearCache={clearCache} loading={loading} />;
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--matrix-black)', color: 'var(--neon-green)' }}>
-      {/* Matrix Header */}
-      <header className="terminal-window sticky top-0 z-50">
-        <div className="terminal-header">
-          <div className="terminal-dots">
-            <div className="terminal-dot close"></div>
-            <div className="terminal-dot minimize"></div>
-            <div className="terminal-dot maximize"></div>
-          </div>
-          <div className="flex-1 text-center">
-            <span className="terminal-text">COLLEGE.SOCIAL.SYS v2.2.0</span>
-          </div>
-        </div>
-        <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-3">
-            <h1 className="terminal-title">🎓 COLLEGE SOCIAL</h1>
-            <span className="terminal-text text-sm hidden sm:block">[ANONYMOUS CAMPUS NETWORK]</span>
-          </div>
-          <div className="flex items-center space-x-4">
-            <span className="terminal-text text-sm">
-              <span className="hacker-username">{username}</span>
-              <span className="status-online"> ● ONLINE</span>
-            </span>
-            <button 
-              onClick={logout}
-              className="hacker-button"
-            >
-              LOGOUT
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Matrix Navigation */}
-      <nav className="matrix-nav sticky top-24 z-40">
-        <div className="max-w-6xl mx-auto px-4 py-3">
-          <div className="flex space-x-2 overflow-x-auto scrollbar-hide">
-            {hashtags.map(tag => (
-              <button
-                key={tag}
-                onClick={() => setCurrentHashtag(tag)}
-                className={`hacker-button whitespace-nowrap transition-all duration-300 ${
-                  currentHashtag === tag ? 'active' : ''
-                }`}
-                style={currentHashtag === tag ? {
-                  background: 'var(--neon-green)',
-                  color: 'var(--matrix-black)',
-                  boxShadow: '0 0 20px var(--neon-green)'
-                } : {}}
-              >
-                <span className="hacker-hashtag">{tag}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </nav>
-
-      {/* Main Terminal */}
-      <main className="max-w-4xl mx-auto px-4 py-6">
-        <HackerPostComposer 
+    <div className="app-container">
+      <Header username={username} onLogout={logout} />
+      <Navigation 
+        hashtags={hashtags}
+        currentHashtag={currentHashtag}
+        onHashtagChange={setCurrentHashtag}
+      />
+      
+      <main className="main-content">
+        <PostComposer 
           newPost={newPost}
           setNewPost={setNewPost}
           onSubmit={createPost}
@@ -386,7 +335,8 @@ function App() {
           replyingTo={replyingTo}
           onCancelReply={cancelReply}
         />
-        <HackerPostsList 
+        
+        <PostsList 
           posts={posts} 
           hashtag={currentHashtag}
           onReact={reactToPost}
@@ -399,7 +349,7 @@ function App() {
   );
 }
 
-function HackerLoginPage({ onLogin, onClearCache, loading }) {
+function LoginPage({ onLogin, onClearCache, loading }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('student');
@@ -415,159 +365,166 @@ function HackerLoginPage({ onLogin, onClearCache, loading }) {
 
   const handleClearCache = () => {
     if (!email.trim()) {
-      alert('ENTER EMAIL FIRST');
+      alert('Please enter email first');
       return;
     }
     onClearCache(email);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--matrix-black)' }}>
-      <div className="max-w-md w-full">
-        <div className="text-center mb-8">
-          <div className="terminal-title text-6xl mb-4">⚡ ACCESS TERMINAL ⚡</div>
-          <p className="terminal-text">COLLEGE SOCIAL NETWORK v2.2.0</p>
-          <p className="terminal-text text-sm mt-2">[AUTHORIZED PERSONNEL ONLY]</p>
+    <div className="login-container">
+      <div className="login-card">
+        <div className="login-header">
+          <h1 className="login-title">College Social</h1>
+          <p className="login-subtitle">Connect with your campus community</p>
         </div>
         
-        <div className="terminal-window mb-6">
-          <div className="terminal-header">
-            <div className="terminal-dots">
-              <div className="terminal-dot close"></div>
-              <div className="terminal-dot minimize"></div>
-              <div className="terminal-dot maximize"></div>
-            </div>
-            <span className="terminal-text">WARNING.SYS</span>
+        <div className="disclaimer-card">
+          <div className="disclaimer-header">
+            <span className="warning-icon">⚠️</span>
+            <h3>Privacy Notice</h3>
           </div>
-          <div className="p-4">
-            <h3 className="terminal-text text-lg mb-2">
-              ⚠️ SECURITY NOTICE ⚠️
-            </h3>
-            <p className="terminal-text text-sm mb-3">
-              > COMMUNITY MONITORED NETWORK<br/>
-              > ERP CREDENTIALS FOR VERIFICATION ONLY<br/>
-              > NO DATA STORED ON REMOTE SERVERS<br/>
-              > ANONYMOUS IDENTITY GUARANTEED
-            </p>
-            <label className="flex items-center space-x-2 cursor-pointer">
+          <div className="disclaimer-content">
+            <p>• Community monitored network</p>
+            <p>• ERP credentials for verification only</p>
+            <p>• No data stored on remote servers</p>
+            <p>• Anonymous identity guaranteed</p>
+            
+            <label className="checkbox-container">
               <input
                 type="checkbox"
                 checked={agreed}
                 onChange={(e) => setAgreed(e.target.checked)}
-                className="w-4 h-4"
-                style={{ accentColor: 'var(--neon-green)' }}
+                className="checkbox"
               />
-              <span className="terminal-text text-sm">I ACKNOWLEDGE AND AGREE</span>
+              <span className="checkmark"></span>
+              I acknowledge and agree to these terms
             </label>
           </div>
         </div>
 
-        <div className="terminal-window">
-          <div className="terminal-header">
-            <div className="terminal-dots">
-              <div className="terminal-dot close"></div>
-              <div className="terminal-dot minimize"></div>
-              <div className="terminal-dot maximize"></div>
-            </div>
-            <span className="terminal-text">LOGIN.EXE</span>
-          </div>
-          <form onSubmit={handleSubmit} className="p-4 space-y-4">
-            <div>
-              <label className="block terminal-text text-sm mb-1">
-                SELECT_ROLE:
-              </label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="hacker-input"
-                required
-                disabled={loading}
-              >
-                <option value="student">STUDENT.USER</option>
-                <option value="staff">STAFF.ADMIN</option>
-              </select>
-            </div>
-            
-            <div>
-              <label className="block terminal-text text-sm mb-1">
-                ERP_USERNAME:
-              </label>
-              <input
-                type="email"
-                placeholder="ENTER_CREDENTIALS..."
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="hacker-input typing-cursor"
-                required
-                disabled={loading}
-              />
-            </div>
-            
-            <div>
-              <label className="block terminal-text text-sm mb-1">
-                ERP_PASSWORD:
-              </label>
-              <input
-                type="password"
-                placeholder="*************"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="hacker-input"
-                required
-                disabled={loading}
-              />
-            </div>
-            
-            <button 
-              type="submit" 
-              disabled={!agreed || loading}
-              className="hacker-button w-full py-3 flex items-center justify-center space-x-2"
+        <form onSubmit={handleSubmit} className="login-form">
+          <div className="form-group">
+            <label>Role</label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="form-input"
+              required
+              disabled={loading}
             >
-              {loading ? (
-                <>
-                  <div className="matrix-loading"></div>
-                  <span>AUTHENTICATING...</span>
-                </>
-              ) : (
-                <>
-                  <span>🔐</span>
-                  <span>INITIATE LOGIN SEQUENCE</span>
-                </>
-              )}
-            </button>
-          </form>
-        </div>
+              <option value="student">Student</option>
+              <option value="staff">Staff</option>
+            </select>
+          </div>
+          
+          <div className="form-group">
+            <label>ERP Email</label>
+            <input
+              type="email"
+              placeholder="Enter your ERP email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="form-input"
+              required
+              disabled={loading}
+            />
+          </div>
+          
+          <div className="form-group">
+            <label>Password</label>
+            <input
+              type="password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="form-input"
+              required
+              disabled={loading}
+            />
+          </div>
+          
+          <button 
+            type="submit" 
+            disabled={!agreed || loading}
+            className="login-button"
+          >
+            {loading ? (
+              <>
+                <div className="spinner"></div>
+                Authenticating...
+              </>
+            ) : (
+              <>
+                <span>🔐</span>
+                Login
+              </>
+            )}
+          </button>
+        </form>
 
         {showDebug && (
-          <div className="terminal-window mt-4">
-            <div className="terminal-header">
-              <span className="terminal-text">DEBUG.SYS</span>
-            </div>
-            <div className="p-4">
-              <button
-                onClick={handleClearCache}
-                className="hacker-button w-full"
-              >
-                🧹 FLUSH_CACHE.EXE
-              </button>
-            </div>
+          <div className="debug-panel">
+            <button onClick={handleClearCache} className="debug-button">
+              Clear Cache
+            </button>
           </div>
         )}
         
-        <div className="mt-4 text-center">
-          <button
-            onClick={() => setShowDebug(!showDebug)}
-            className="terminal-text text-xs underline"
-          >
-            🔧 DEBUG_MODE
-          </button>
-        </div>
+        <button
+          onClick={() => setShowDebug(!showDebug)}
+          className="debug-toggle"
+        >
+          Debug Mode
+        </button>
       </div>
     </div>
   );
 }
 
-function HackerPostComposer({ newPost, setNewPost, onSubmit, onImageUpload, hashtag, imageUploading, replyingTo, onCancelReply }) {
+function Header({ username, onLogout }) {
+  return (
+    <header className="header">
+      <div className="header-content">
+        <div className="header-left">
+          <h1 className="app-title">🎓 College Social</h1>
+          <span className="app-subtitle">Campus Network</span>
+        </div>
+        <div className="header-right">
+          <span className="user-info">
+            <span className="username">{username}</span>
+            <span className="status">● Online</span>
+          </span>
+          <button onClick={onLogout} className="logout-button">
+            Logout
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function Navigation({ hashtags, currentHashtag, onHashtagChange }) {
+  return (
+    <nav className="navigation">
+      <div className="nav-content">
+        <div className="nav-tabs">
+          {hashtags.map(tag => (
+            <button
+              key={tag}
+              onClick={() => onHashtagChange(tag)}
+              className={`nav-tab ${currentHashtag === tag ? 'active' : ''}`}
+            >
+              #{tag}
+            </button>
+          ))}
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+function PostComposer({ newPost, setNewPost, onSubmit, onImageUpload, hashtag, imageUploading, replyingTo, onCancelReply }) {
   const fileInputRef = React.useRef(null);
 
   const handleImageClick = () => {
@@ -588,110 +545,88 @@ function HackerPostComposer({ newPost, setNewPost, onSubmit, onImageUpload, hash
   };
 
   return (
-    <div className="terminal-window mb-6">
-      <div className="terminal-header">
-        <div className="terminal-dots">
-          <div className="terminal-dot close"></div>
-          <div className="terminal-dot minimize"></div>
-          <div className="terminal-dot maximize"></div>
+    <div className="post-composer">
+      {replyingTo && (
+        <div className="reply-info">
+          <span>Replying to {replyingTo.username}</span>
+          <button onClick={onCancelReply} className="cancel-reply">
+            ✕
+          </button>
         </div>
-        <span className="terminal-text">COMPOSE.EXE</span>
+      )}
+      
+      <div className="composer-header">
+        <span className="current-hashtag">#{hashtag}</span>
+        <span className="composer-hint">
+          {replyingTo ? 'Write your reply...' : 'What\'s happening?'}
+        </span>
       </div>
       
-      <div className="p-6">
-        {replyingTo && (
-          <div className="hacker-post mb-4" style={{ borderColor: 'var(--cyber-blue)' }}>
-            <div className="flex items-center justify-between">
-              <span className="terminal-text text-sm">
-                REPLYING_TO: <span className="hacker-username">{replyingTo.username}</span>
-              </span>
-              <button
-                onClick={onCancelReply}
-                className="hacker-button text-xs"
-                style={{ color: 'var(--error-red)', borderColor: 'var(--error-red)' }}
-              >
-                ABORT
-              </button>
-            </div>
-          </div>
-        )}
-        
-        <div className="flex items-center space-x-2 mb-4">
-          <span className="hacker-hashtag">{hashtag}</span>
-          <span className="terminal-text">•</span>
-          <span className="terminal-text text-sm">
-            {replyingTo ? 'COMPOSE_REPLY...' : "BROADCAST_MESSAGE..."}
-          </span>
+      <textarea
+        value={newPost}
+        onChange={(e) => setNewPost(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder={`${replyingTo ? 'Write your reply...' : `Share something with #${hashtag}...`} (Ctrl+Enter to post)`}
+        className="post-textarea"
+        rows="4"
+        maxLength={2000}
+      />
+      
+      <div className="composer-footer">
+        <div className="composer-actions">
+          <button
+            onClick={handleImageClick}
+            disabled={imageUploading}
+            className="action-button"
+          >
+            {imageUploading ? (
+              <div className="spinner"></div>
+            ) : (
+              <span>🖼️</span>
+            )}
+            Image
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="hidden"
+          />
         </div>
         
-        <textarea
-          value={newPost}
-          onChange={(e) => setNewPost(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={`${replyingTo ? 'ENTER_REPLY...' : `BROADCAST_TO_#${hashtag}...`} [CTRL+ENTER TO SEND]`}
-          className="hacker-input typing-cursor"
-          rows="4"
-          maxLength={2000}
-          style={{ resize: 'none', minHeight: '120px' }}
-        />
-        
-        <div className="flex justify-between items-center mt-4">
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={handleImageClick}
-              disabled={imageUploading}
-              className="hacker-button flex items-center space-x-2"
-            >
-              {imageUploading ? (
-                <div className="matrix-loading"></div>
-              ) : (
-                <span>🖼️</span>
-              )}
-              <span>UPLOAD_IMAGE.ASCII</span>
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="hidden"
-            />
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            <span className="terminal-text text-sm">
-              {newPost.length}/2000
-            </span>
-            <button
-              onClick={onSubmit}
-              disabled={!newPost.trim()}
-              className="hacker-button"
-            >
-              {replyingTo ? 'SEND_REPLY 💬' : 'BROADCAST 🚀'}
-            </button>
-          </div>
+        <div className="composer-meta">
+          <span className="char-count">
+            {newPost.length}/2000
+          </span>
+          <button
+            onClick={onSubmit}
+            disabled={!newPost.trim()}
+            className="post-button"
+          >
+            {replyingTo ? 'Reply' : 'Post'}
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-function HackerPostsList({ posts, hashtag, onReact, onReport, onReply, userReactions }) {
+function PostsList({ posts, hashtag, onReact, onReport, onReply, userReactions }) {
   if (posts.length === 0) {
     return (
-      <div className="text-center py-16">
-        <div className="text-6xl mb-4">💻</div>
-        <h3 className="terminal-title text-xl mb-2">NO_DATA_FOUND</h3>
-        <p className="terminal-text">CHANNEL #{hashtag} IS EMPTY</p>
-        <p className="terminal-text text-sm mt-2">INITIATE FIRST BROADCAST...</p>
+      <div className="empty-state">
+        <div className="empty-icon">💻</div>
+        <h3>No posts yet</h3>
+        <p>Be the first to post in #{hashtag}</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="posts-list">
       {posts.map(post => (
-        <HackerPostCard
+        <PostCard
           key={post.id}
           post={post}
           onReact={onReact}
@@ -704,7 +639,7 @@ function HackerPostsList({ posts, hashtag, onReact, onReport, onReply, userReact
   );
 }
 
-function HackerPostCard({ post, onReact, onReport, onReply, userReactions }) {
+function PostCard({ post, onReact, onReport, onReply, userReactions }) {
   const [showReportDialog, setShowReportDialog] = useState(false);
   const [showAllReplies, setShowAllReplies] = useState(false);
 
@@ -718,184 +653,132 @@ function HackerPostCard({ post, onReact, onReport, onReply, userReactions }) {
     const now = new Date();
     const diffInMinutes = Math.floor((now - date) / 1000 / 60);
     
-    if (diffInMinutes < 1) return 'NOW';
-    if (diffInMinutes < 60) return `${diffInMinutes}M_AGO`;
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}H_AGO`;
-    return `${Math.floor(diffInMinutes / 1440)}D_AGO`;
+    if (diffInMinutes < 1) return 'now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h`;
+    return `${Math.floor(diffInMinutes / 1440)}d`;
   };
 
   const visibleReplies = showAllReplies ? (post.replies || []) : (post.replies || []).slice(0, 3);
   const hasMoreReplies = (post.replies || []).length > 3;
 
   return (
-    <div className="terminal-window">
-      <div className="terminal-header">
-        <div className="terminal-dots">
-          <div className="terminal-dot close"></div>
-          <div className="terminal-dot minimize"></div>
-          <div className="terminal-dot maximize"></div>
+    <div className="post-card">
+      <div className="post-header">
+        <div className="post-user">
+          <span className="post-username">{post.username}</span>
+          <span className="post-time">{formatTime(post.created_at)}</span>
         </div>
-        <div className="flex-1 flex justify-between items-center">
-          <span className="hacker-username">{post.username}</span>
-          <span className="terminal-text text-sm">{formatTime(post.created_at)}</span>
-          {post.report_count > 0 && (
-            <span className="status-warning text-xs">
-              {post.report_count}_REPORTS
-            </span>
-          )}
-        </div>
-      </div>
-      
-      <div className="p-4">
-        <pre className="terminal-text whitespace-pre-wrap font-mono leading-relaxed mb-4">
-          {post.content}
-        </pre>
-        
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => onReact(post.id, 'smack', false)}
-              className={`hacker-button text-sm transition-all duration-300 ${
-                userReactions[post.id] === 'smack' ? 'active' : ''
-              }`}
-              style={userReactions[post.id] === 'smack' ? {
-                background: 'var(--neon-green)',
-                color: 'var(--matrix-black)',
-                boxShadow: '0 0 15px var(--neon-green)'
-              } : {}}
-            >
-              👊 SMACK [{post.smacks || 0}]
-            </button>
-            
-            <button
-              onClick={() => onReact(post.id, 'cap', false)}
-              className={`hacker-button text-sm transition-all duration-300 ${
-                userReactions[post.id] === 'cap' ? 'active' : ''
-              }`}
-              style={userReactions[post.id] === 'cap' ? {
-                background: 'var(--neon-green)',
-                color: 'var(--matrix-black)',
-                boxShadow: '0 0 15px var(--neon-green)'
-              } : {}}
-            >
-              🧢 CAP [{post.caps || 0}]
-            </button>
-            
-            <button
-              onClick={() => onReply(post)}
-              className="hacker-button text-sm"
-            >
-              💬 REPLY [{post.replies?.length || 0}]
-            </button>
-          </div>
-          
-          <button
-            onClick={() => setShowReportDialog(true)}
-            className="hacker-button text-sm"
-            style={{ borderColor: 'var(--error-red)', color: 'var(--error-red)' }}
-          >
-            🚨 REPORT
-          </button>
-        </div>
-
-        {/* Comments Section */}
-        {post.replies && post.replies.length > 0 && (
-          <div className="space-y-3 border-l-2 pl-4 ml-4" style={{ borderColor: 'var(--dark-green)' }}>
-            {visibleReplies.map(reply => (
-              <div key={reply.id} className="hacker-post">
-                <div className="flex items-center space-x-2 mb-2">
-                  <span className="hacker-username text-sm">{reply.username}</span>
-                  <span className="terminal-text text-xs">{formatTime(reply.created_at)}</span>
-                </div>
-                
-                <pre className="terminal-text whitespace-pre-wrap text-sm font-mono leading-relaxed mb-2">
-                  {reply.content}
-                </pre>
-                
-                <div className="flex items-center space-x-3">
-                  <button
-                    onClick={() => onReact(reply.id, 'smack', true)}
-                    className={`hacker-button text-xs transition-all duration-300 ${
-                      userReactions[reply.id] === 'smack' ? 'active' : ''
-                    }`}
-                    style={userReactions[reply.id] === 'smack' ? {
-                      background: 'var(--neon-green)',
-                      color: 'var(--matrix-black)',
-                      boxShadow: '0 0 10px var(--neon-green)'
-                    } : {}}
-                  >
-                    👊 [{reply.smacks || 0}]
-                  </button>
-                  
-                  <button
-                    onClick={() => onReact(reply.id, 'cap', true)}
-                    className={`hacker-button text-xs transition-all duration-300 ${
-                      userReactions[reply.id] === 'cap' ? 'active' : ''
-                    }`}
-                    style={userReactions[reply.id] === 'cap' ? {
-                      background: 'var(--neon-green)',
-                      color: 'var(--matrix-black)',
-                      boxShadow: '0 0 10px var(--neon-green)'
-                    } : {}}
-                  >
-                    🧢 [{reply.caps || 0}]
-                  </button>
-                  
-                  <button
-                    onClick={() => onReport(reply.id)}
-                    className="hacker-button text-xs"
-                    style={{ borderColor: 'var(--error-red)', color: 'var(--error-red)' }}
-                  >
-                    🚨
-                  </button>
-                </div>
-              </div>
-            ))}
-            
-            {hasMoreReplies && (
-              <button
-                onClick={() => setShowAllReplies(!showAllReplies)}
-                className="terminal-text text-sm hover:text-cyan-400 transition-colors"
-              >
-                {showAllReplies ? 
-                  '👁️ SHOW_LESS' : 
-                  `👁️ LOAD_${post.replies.length - 3}_MORE`
-                }
-              </button>
-            )}
-          </div>
+        {post.report_count > 0 && (
+          <span className="report-count">
+            {post.report_count} reports
+          </span>
         )}
       </div>
+      
+      <div className="post-content">
+        <p>{post.content}</p>
+      </div>
+      
+      <div className="post-actions">
+        <div className="reaction-buttons">
+          <button
+            onClick={() => onReact(post.id, 'smack', false)}
+            className={`reaction-button ${userReactions[post.id] === 'smack' ? 'active' : ''}`}
+          >
+            👊 {post.smacks || 0}
+          </button>
+          
+          <button
+            onClick={() => onReact(post.id, 'cap', false)}
+            className={`reaction-button ${userReactions[post.id] === 'cap' ? 'active' : ''}`}
+          >
+            🧢 {post.caps || 0}
+          </button>
+          
+          <button
+            onClick={() => onReply(post)}
+            className="action-button"
+          >
+            💬 {post.replies?.length || 0}
+          </button>
+        </div>
+        
+        <button
+          onClick={() => setShowReportDialog(true)}
+          className="report-button"
+        >
+          Report
+        </button>
+      </div>
 
-      {/* Report Dialog */}
-      {showReportDialog && (
-        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0, 0, 0, 0.9)' }}>
-          <div className="terminal-window max-w-md w-full mx-4">
-            <div className="terminal-header">
-              <span className="terminal-text" style={{ color: 'var(--error-red)' }}>
-                REPORT.EXE
-              </span>
-            </div>
-            <div className="p-6">
-              <h3 className="terminal-text text-lg mb-2">CONFIRM_REPORT?</h3>
-              <p className="terminal-text mb-4">
-                AUTO_REMOVAL_AT: 20_COMMUNITY_REPORTS
-              </p>
-              <div className="flex space-x-3">
+      {post.replies && post.replies.length > 0 && (
+        <div className="replies-section">
+          {visibleReplies.map(reply => (
+            <div key={reply.id} className="reply-card">
+              <div className="reply-header">
+                <span className="reply-username">{reply.username}</span>
+                <span className="reply-time">{formatTime(reply.created_at)}</span>
+              </div>
+              
+              <p className="reply-content">{reply.content}</p>
+              
+              <div className="reply-actions">
                 <button
-                  onClick={handleReport}
-                  className="hacker-button"
-                  style={{ borderColor: 'var(--error-red)', color: 'var(--error-red)' }}
+                  onClick={() => onReact(reply.id, 'smack', true)}
+                  className={`reaction-button small ${userReactions[reply.id] === 'smack' ? 'active' : ''}`}
                 >
-                  CONFIRM_REPORT
+                  👊 {reply.smacks || 0}
                 </button>
+                
                 <button
-                  onClick={() => setShowReportDialog(false)}
-                  className="hacker-button"
+                  onClick={() => onReact(reply.id, 'cap', true)}
+                  className={`reaction-button small ${userReactions[reply.id] === 'cap' ? 'active' : ''}`}
                 >
-                  CANCEL
+                  🧢 {reply.caps || 0}
+                </button>
+                
+                <button
+                  onClick={() => onReport(reply.id)}
+                  className="report-button small"
+                >
+                  Report
                 </button>
               </div>
+            </div>
+          ))}
+          
+          {hasMoreReplies && (
+            <button
+              onClick={() => setShowAllReplies(!showAllReplies)}
+              className="show-more-button"
+            >
+              {showAllReplies ? 
+                'Show less' : 
+                `Show ${post.replies.length - 3} more replies`
+              }
+            </button>
+          )}
+        </div>
+      )}
+
+      {showReportDialog && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <div className="modal-header">
+              <h3>Report Post</h3>
+            </div>
+            <div className="modal-content">
+              <p>Are you sure you want to report this post?</p>
+              <p className="modal-note">Posts are automatically removed after 20 reports.</p>
+            </div>
+            <div className="modal-actions">
+              <button onClick={handleReport} className="confirm-button">
+                Report
+              </button>
+              <button onClick={() => setShowReportDialog(false)} className="cancel-button">
+                Cancel
+              </button>
             </div>
           </div>
         </div>
