@@ -166,6 +166,7 @@ function App() {
     } catch (error) {
       alert('Failed to create post');
     }
+    
   };
 
   const reactToPost = async (postId, reactionType, isReply = false) => {
@@ -309,31 +310,34 @@ async def report_post(post_id: str, authorization: Optional[str] = Header(None))
   };
 
   const handleImageUpload = async (file) => {
-    if (!file) return;
+  if (!file) return;
+  
+  setImageUploading(true);
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
     
-    setImageUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      
-      const response = await fetch(`${API_BASE}/upload-image`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setNewPost(prev => prev + '\n\n' + data.ascii_art);
-      } else {
-        alert('Image upload failed');
-      }
-    } catch (error) {
-      alert('Image upload failed');
-    } finally {
-      setImageUploading(false);
+    // ✅ Changed endpoint to visual minecraft
+    const response = await fetch(`${API_BASE}/upload-minecraft-visual`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      // ✅ Insert visual blocks with special markers
+      setNewPost(prev => prev + '\n\n🎮 MINECRAFT BLOCKS:\n[VISUAL_BLOCKS]' + data.minecraft_html + '[/VISUAL_BLOCKS]');
+    } else {
+      alert('Minecraft conversion failed');
     }
-  };
+  } catch (error) {
+    alert('Minecraft upload failed');
+  } finally {
+    setImageUploading(false);
+  }
+};
+
 
   const logout = () => {
     localStorage.removeItem('token');
@@ -559,96 +563,106 @@ function Navigation({ hashtags, currentHashtag, onHashtagChange }) {
 
 function PostComposer({ newPost, setNewPost, onSubmit, onImageUpload, hashtag, imageUploading, replyingTo, onCancelReply }) {
   const fileInputRef = React.useRef(null);
-  const [asciiOptions, setAsciiOptions] = useState({
-    quality: 'ultra',      // 'basic', 'detailed', 'ultra'
-    color: true,           // Enable color
-    width: 120            // Detail level
-  });
-
-  const handleImageUpload = async (file) => {
-    if (!file) return;
-    
-    setImageUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('options', JSON.stringify(asciiOptions));
-      
-      const response = await fetch(`${API_BASE}/upload-image`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        // Show preview with color support
-        setNewPost(prev => prev + '\n\n🎨 ULTRA ASCII ART:\n' + data.ascii_art);
-      } else {
-        alert('ASCII conversion failed');
-      }
-    } catch (error) {
-      alert('Upload failed');
-    } finally {
-      setImageUploading(false);
-    }
-  };
-
+  
   return (
-    <div className="terminal-window mb-6">
-      <div className="terminal-header">
-        <span className="terminal-text">ULTRA_ASCII_CONVERTER.EXE</span>
+    <div className="post-composer">
+      <div className="composer-header">
+        <h3>🎮 Minecraft Block Converter</h3>
+        {replyingTo && (
+          <div className="reply-indicator">
+            Replying to @{replyingTo.username}
+            <button onClick={onCancelReply} className="cancel-reply">×</button>
+          </div>
+        )}
       </div>
       
-      <div className="p-6">
-        {/* Quality Options */}
-        <div className="flex space-x-4 mb-4">
-          <select 
-            value={asciiOptions.quality} 
-            onChange={(e) => setAsciiOptions({...asciiOptions, quality: e.target.value})}
-            className="hacker-input text-sm"
-          >
-            <option value="basic">BASIC_ASCII</option>
-            <option value="detailed">DETAILED_ASCII</option>
-            <option value="ultra">ULTRA_REALISTIC</option>
-          </select>
-          
-          <label className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              checked={asciiOptions.color}
-              onChange={(e) => setAsciiOptions({...asciiOptions, color: e.target.checked})}
-              className="w-4 h-4"
-            />
-            <span className="terminal-text text-sm">COLOR_MODE</span>
-          </label>
-        </div>
-
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={imageUploading}
-            className="hacker-button flex items-center space-x-2"
-          >
-            {imageUploading ? (
-              <div className="matrix-loading"></div>
-            ) : (
-              <span>🎨</span>
-            )}
-            <span>ULTRA_ASCII_CONVERT</span>
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={(e) => handleImageUpload(e.target.files[0])}
-            className="hidden"
-          />
-        </div>
+      <textarea
+        value={newPost}
+        onChange={(e) => setNewPost(e.target.value)}
+        placeholder={`Share something in #${hashtag}...`}
+        className="post-textarea"
+        maxLength={2000}
+      />
+      
+      <div className="composer-actions">
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={imageUploading}
+          className="minecraft-button"
+        >
+          {imageUploading ? (
+            <>
+              <div className="spinner"></div>
+              Converting...
+            </>
+          ) : (
+            <>
+              <span>🎮</span>
+              MINECRAFT_BLOCKS
+            </>
+          )}
+        </button>
+        
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={(e) => onImageUpload(e.target.files[0])}
+          className="hidden"
+        />
+        
+        <button 
+          onClick={onSubmit}
+          disabled={!newPost.trim()}
+          className="submit-button"
+        >
+          Post
+        </button>
+      </div>
+      
+      <div className="character-count">
+        {newPost.length}/2000
       </div>
     </div>
   );
 }
+function MinecraftBlockRenderer({ htmlContent }) {
+  return (
+    <div 
+      dangerouslySetInnerHTML={{ __html: htmlContent }}
+      className="minecraft-render"
+    />
+  );
+}
+
+function PostContent({ content }) {
+  // Split content to find visual blocks
+  const parts = content.split(/\[VISUAL_BLOCKS\](.*?)\[\/VISUAL_BLOCKS\]/gs);
+  
+  return (
+    <div className="post-content">
+      {parts.map((part, index) => {
+        if (index % 2 === 1) {
+          // This is Minecraft HTML content
+          return <MinecraftBlockRenderer key={index} htmlContent={part} />;
+        } else {
+          // Regular text content
+          return (
+            <div key={index} className="text-content">
+              {part.split('\n').map((line, lineIndex) => (
+                <React.Fragment key={lineIndex}>
+                  {line}
+                  {lineIndex < part.split('\n').length - 1 && <br />}
+                </React.Fragment>
+              ))}
+            </div>
+          );
+        }
+      })}
+    </div>
+  );
+}
+
 
 function PostsList({ posts, hashtag, onReact, onReport, onReply, userReactions }) {
   if (posts.length === 0) {
@@ -680,12 +694,12 @@ function PostsList({ posts, hashtag, onReact, onReport, onReply, userReactions }
 function PostCard({ post, onReact, onReport, onReply, userReactions }) {
   const [showReportDialog, setShowReportDialog] = useState(false);
   const [showAllReplies, setShowAllReplies] = useState(false);
-
+  
   const handleReport = () => {
     setShowReportDialog(false);
     onReport(post.id);
   };
-
+  
   const formatTime = (timestamp) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -696,10 +710,10 @@ function PostCard({ post, onReact, onReport, onReply, userReactions }) {
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h`;
     return `${Math.floor(diffInMinutes / 1440)}d`;
   };
-
+  
   const visibleReplies = showAllReplies ? (post.replies || []) : (post.replies || []).slice(0, 3);
   const hasMoreReplies = (post.replies || []).length > 3;
-
+  
   return (
     <div className="post-card">
       <div className="post-header">
@@ -714,9 +728,8 @@ function PostCard({ post, onReact, onReport, onReply, userReactions }) {
         )}
       </div>
       
-      <div className="post-content">
-        <p>{post.content}</p>
-      </div>
+      {/* ✅ Use PostContent component for visual blocks */}
+      <PostContent content={post.content} />
       
       <div className="post-actions">
         <div className="reaction-buttons">
@@ -750,6 +763,7 @@ function PostCard({ post, onReact, onReport, onReply, userReactions }) {
         </button>
       </div>
 
+      {/* Rest of your existing reply logic stays the same */}
       {post.replies && post.replies.length > 0 && (
         <div className="replies-section">
           {visibleReplies.map(reply => (
@@ -759,7 +773,8 @@ function PostCard({ post, onReact, onReport, onReply, userReactions }) {
                 <span className="reply-time">{formatTime(reply.created_at)}</span>
               </div>
               
-              <p className="reply-content">{reply.content}</p>
+              {/* ✅ Use PostContent for replies too */}
+              <PostContent content={reply.content} />
               
               <div className="reply-actions">
                 <button
@@ -800,6 +815,7 @@ function PostCard({ post, onReact, onReport, onReply, userReactions }) {
         </div>
       )}
 
+      {/* Existing report dialog */}
       {showReportDialog && (
         <div className="modal-overlay">
           <div className="modal">
