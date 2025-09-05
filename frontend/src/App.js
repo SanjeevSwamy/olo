@@ -559,86 +559,91 @@ function Navigation({ hashtags, currentHashtag, onHashtagChange }) {
 
 function PostComposer({ newPost, setNewPost, onSubmit, onImageUpload, hashtag, imageUploading, replyingTo, onCancelReply }) {
   const fileInputRef = React.useRef(null);
+  const [asciiOptions, setAsciiOptions] = useState({
+    quality: 'ultra',      // 'basic', 'detailed', 'ultra'
+    color: true,           // Enable color
+    width: 120            // Detail level
+  });
 
-  const handleImageClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      onImageUpload(file);
-    }
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-      onSubmit();
+  const handleImageUpload = async (file) => {
+    if (!file) return;
+    
+    setImageUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('options', JSON.stringify(asciiOptions));
+      
+      const response = await fetch(`${API_BASE}/upload-image`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Show preview with color support
+        setNewPost(prev => prev + '\n\n🎨 ULTRA ASCII ART:\n' + data.ascii_art);
+      } else {
+        alert('ASCII conversion failed');
+      }
+    } catch (error) {
+      alert('Upload failed');
+    } finally {
+      setImageUploading(false);
     }
   };
 
   return (
-    <div className="post-composer">
-      {replyingTo && (
-        <div className="reply-info">
-          <span>Replying to {replyingTo.username}</span>
-          <button onClick={onCancelReply} className="cancel-reply">
-            ✕
-          </button>
-        </div>
-      )}
-      
-      <div className="composer-header">
-        <span className="current-hashtag">#{hashtag}</span>
-        <span className="composer-hint">
-          {replyingTo ? 'Write your reply...' : 'What\'s happening?'}
-        </span>
+    <div className="terminal-window mb-6">
+      <div className="terminal-header">
+        <span className="terminal-text">ULTRA_ASCII_CONVERTER.EXE</span>
       </div>
       
-      <textarea
-        value={newPost}
-        onChange={(e) => setNewPost(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder={`${replyingTo ? 'Write your reply...' : `Share something with #${hashtag}...`} (Ctrl+Enter to post)`}
-        className="post-textarea"
-        rows="4"
-        maxLength={2000}
-      />
-      
-      <div className="composer-footer">
-        <div className="composer-actions">
+      <div className="p-6">
+        {/* Quality Options */}
+        <div className="flex space-x-4 mb-4">
+          <select 
+            value={asciiOptions.quality} 
+            onChange={(e) => setAsciiOptions({...asciiOptions, quality: e.target.value})}
+            className="hacker-input text-sm"
+          >
+            <option value="basic">BASIC_ASCII</option>
+            <option value="detailed">DETAILED_ASCII</option>
+            <option value="ultra">ULTRA_REALISTIC</option>
+          </select>
+          
+          <label className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              checked={asciiOptions.color}
+              onChange={(e) => setAsciiOptions({...asciiOptions, color: e.target.checked})}
+              className="w-4 h-4"
+            />
+            <span className="terminal-text text-sm">COLOR_MODE</span>
+          </label>
+        </div>
+
+        <div className="flex items-center space-x-3">
           <button
-            onClick={handleImageClick}
+            onClick={() => fileInputRef.current?.click()}
             disabled={imageUploading}
-            className="action-button"
+            className="hacker-button flex items-center space-x-2"
           >
             {imageUploading ? (
-              <div className="spinner"></div>
+              <div className="matrix-loading"></div>
             ) : (
-              <span>🖼️</span>
+              <span>🎨</span>
             )}
-            Image
+            <span>ULTRA_ASCII_CONVERT</span>
           </button>
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            onChange={handleFileChange}
+            onChange={(e) => handleImageUpload(e.target.files[0])}
             className="hidden"
           />
-        </div>
-        
-        <div className="composer-meta">
-          <span className="char-count">
-            {newPost.length}/2000
-          </span>
-          <button
-            onClick={onSubmit}
-            disabled={!newPost.trim()}
-            className="post-button"
-          >
-            {replyingTo ? 'Reply' : 'Post'}
-          </button>
         </div>
       </div>
     </div>
