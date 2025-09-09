@@ -14,6 +14,7 @@ function App() {
   const [imageUploading, setImageUploading] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
   const [userReactions, setUserReactions] = useState({});
+  const fileInputRef = React.useRef(null);
 
   const hashtags = ['General', 'Trip', 'CollegeEvents', 'Studies', 'Memes', 'Jobs', 'Confessions', 'Sports'];
 
