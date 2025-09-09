@@ -1131,3 +1131,64 @@ body {
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
+/* Emotion Tags */
+.emotion-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: white;
+  margin-left: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.post-emotion {
+  /* Post emotions are slightly larger */
+  padding: 3px 10px;
+  font-size: 0.8rem;
+}
+
+.reply-emotion {
+  /* Reply emotions are smaller */
+  padding: 2px 6px;
+  font-size: 0.7rem;
+}
+
+.reply-emotion-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 16px;
+  padding: 8px;
+  background: var(--bg-primary);
+  border-radius: 6px;
+  border-left: 3px solid var(--primary-green);
+}
+
+.reply-emotion-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.emotion-details {
+  cursor: help;
+  opacity: 0.7;
+  font-size: 0.7rem;
+}
+
+/* Hover effects */
+.emotion-tag:hover {
+  transform: scale(1.05);
+  transition: transform 0.1s ease;
+}
+
+/* Dark theme compatibility */
+.reply-emotion-summary {
+  background: rgba(15, 23, 42, 0.3);
+  border-left-color: var(--primary-green);
+}
+
