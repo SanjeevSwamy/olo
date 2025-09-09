@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
 
 const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:8000';
- 
+
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [username, setUsername] = useState('');
@@ -14,8 +14,8 @@ function App() {
   const [imageUploading, setImageUploading] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
   const [userReactions, setUserReactions] = useState({});
+  
   const fileInputRef = React.useRef(null);
-
   const hashtags = ['General', 'Trip', 'CollegeEvents', 'Studies', 'Memes', 'Jobs', 'Confessions', 'Sports'];
 
   const fetchPosts = useCallback(async (offset = 0) => {
@@ -82,60 +82,37 @@ function App() {
     }
   }, []);
 
-  const clearCache = async (email) => {
-    try {
-      const response = await fetch(`${API_BASE}/auth/clear-cache`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase() })
-      });
+  // Image resize function
+  const resizeImage = (file, maxWidth = 300, maxHeight = 300, quality = 0.8) => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
       
-      if (response.ok) {
-        const data = await response.json();
-        alert(`Cache cleared: ${data.message} - Try login again!`);
-      } else {
-        alert('Cache clear failed');
-      }
-    } catch (error) {
-      alert('Cache clear failed');
-    }
+      img.onload = () => {
+        let { width, height } = img;
+        
+        if (width > height) {
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = (width * maxHeight) / height;
+            height = maxHeight;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(resolve, 'image/jpeg', quality);
+      };
+      
+      img.src = URL.createObjectURL(file);
+    });
   };
- // Add this function before your App component
-const resizeImage = (file, maxWidth = 300, maxHeight = 300, quality = 0.8) => {
-  return new Promise((resolve) => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const img = new Image();
-    
-    img.onload = () => {
-      // Calculate new dimensions while maintaining aspect ratio
-      let { width, height } = img;
-      
-      if (width > height) {
-        if (width > maxWidth) {
-          height = (height * maxWidth) / width;
-          width = maxWidth;
-        }
-      } else {
-        if (height > maxHeight) {
-          width = (width * maxHeight) / height;
-          height = maxHeight;
-        }
-      }
-      
-      canvas.width = width;
-      canvas.height = height;
-      
-      // Draw and compress
-      ctx.drawImage(img, 0, 0, width, height);
-      
-      canvas.toBlob(resolve, 'image/jpeg', quality);
-    };
-    
-    img.src = URL.createObjectURL(file);
-  });
-};
-
 
   const handleLogin = async (email, password, role, agreed) => {
     setLoading(true);
@@ -157,9 +134,6 @@ const resizeImage = (file, maxWidth = 300, maxHeight = 300, quality = 0.8) => {
         setToken(data.token);
         setUsername(data.username);
         localStorage.setItem('token', data.token);
-        setTimeout(() => {
-          alert(`Welcome ${data.username}! You're now connected to the network.`);
-        }, 500);
       } else {
         throw new Error(data.detail || 'Login failed');
       }
@@ -210,42 +184,10 @@ const resizeImage = (file, maxWidth = 300, maxHeight = 300, quality = 0.8) => {
     setLoadingReactions(prev => ({ ...prev, [postId]: true }));
     
     const currentReaction = userReactions[postId];
-    const oldPosts = posts;
     const newReactionState = currentReaction === reactionType ? null : reactionType;
     
     setUserReactions(prev => ({ ...prev, [postId]: newReactionState }));
     
-    setPosts(prevPosts => {
-      const getUpdatedItem = (item) => {
-        if (item.id !== postId) return item;
-        const newItem = { ...item };
-        
-        if (currentReaction === 'smack' && newReactionState !== 'smack') {
-          newItem.smacks -= 1;
-        } else if (currentReaction !== 'smack' && newReactionState === 'smack') {
-          newItem.smacks += 1;
-        }
-        
-        if (currentReaction === 'cap' && newReactionState !== 'cap') {
-          newItem.caps -= 1;
-        } else if (currentReaction !== 'cap' && newReactionState === 'cap') {
-          newItem.caps += 1;
-        }
-        
-        newItem.smacks = Math.max(0, newItem.smacks || 0);
-        newItem.caps = Math.max(0, newItem.caps || 0);
-        
-        return newItem;
-      };
-      
-      return prevPosts.map(post => {
-        if (isReply && post.replies) {
-          return { ...post, replies: post.replies.map(getUpdatedItem) };
-        }
-        return getUpdatedItem(post);
-      });
-    });
-
     try {
       const response = await fetch(`${API_BASE}/posts/${postId}/react`, {
         method: 'POST',
@@ -267,8 +209,7 @@ const resizeImage = (file, maxWidth = 300, maxHeight = 300, quality = 0.8) => {
         });
       });
     } catch (error) {
-      console.error('Reaction failed, reverting UI.', error);
-      setPosts(oldPosts);
+      console.error('Reaction failed:', error);
       setUserReactions(prev => ({ ...prev, [postId]: currentReaction }));
     } finally {
       setLoadingReactions(prev => {
@@ -279,92 +220,41 @@ const resizeImage = (file, maxWidth = 300, maxHeight = 300, quality = 0.8) => {
     }
   };
 
-  const reportPost = async (postId) => {
+  const handleImageUpload = async (file) => {
+    if (!file) return;
+    setImageUploading(true);
+    
     try {
-      const response = await fetch(`${API_BASE}/posts/${postId}/report`, {
+      const resizedFile = await resizeImage(file, 200, 200, 0.7);
+      const formData = new FormData();
+      formData.append('file', resizedFile, 'resized-image.jpg');
+      
+      const response = await fetch(`${API_BASE}/upload-minecraft-visual`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
       });
       
       if (response.ok) {
         const data = await response.json();
-        alert(data.message);
-        if (data.removed) {
-          fetchPosts();
+        setNewPost(prev => {
+          const cleanContent = prev.trim();
+          return cleanContent + '\n\n[VISUAL_BLOCKS]' + data.minecraft_html + '[/VISUAL_BLOCKS]';
+        });
+        
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
         }
       } else {
-        const error = await response.json();
-        alert(error.detail || 'Report failed');
+        alert('Image conversion failed');
       }
     } catch (error) {
-      alert('Report failed');
+      console.error('Upload error:', error);
+      alert('Upload failed');
+    } finally {
+      setImageUploading(false);
     }
   };
-
-  const handleReply = (post) => {
-    setReplyingTo(post);
-    setNewPost(`@${post.username} `);
-  };
-
-  const cancelReply = () => {
-    setReplyingTo(null);
-    setNewPost('');
-  };
-
-  const handleImageUpload = async (file) => {
-  if (!file) return;
-  setImageUploading(true);
-  
-  try {
-    // ✅ Resize image BEFORE upload
-    console.log('Original file size:', (file.size / 1024 / 1024).toFixed(2) + 'MB');
-    
-    const resizedFile = await resizeImage(file, 200, 200, 0.7); // Smaller size & lower quality
-    console.log('Resized file size:', (resizedFile.size / 1024 / 1024).toFixed(2) + 'MB');
-    
-    const formData = new FormData();
-    formData.append('file', resizedFile, 'resized-image.jpg');
-    
-    const response = await fetch(`${API_BASE}/upload-minecraft-visual`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` },
-      body: formData
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      
-      // ✅ Additional check for HTML size
-      if (data.minecraft_html && data.minecraft_html.length > 30000) { // 30KB limit
-        alert('Even after resizing, the image creates too complex Minecraft art. Try a simpler image with fewer colors.');
-        return;
-      }
-      
-      setNewPost(prev => {
-        const cleanContent = prev.trim();
-        return cleanContent + '\n\n[VISUAL_BLOCKS]' + data.minecraft_html + '[/VISUAL_BLOCKS]';
-      });
-      
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-      
-    } else {
-      alert('Minecraft conversion failed');
-    }
-  } catch (error) {
-    console.error('Upload error:', error);
-    alert('Minecraft upload failed');
-  } finally {
-    setImageUploading(false);
-  }
-};
-
-
-
 
   const logout = () => {
     localStorage.removeItem('token');
@@ -376,7 +266,7 @@ const resizeImage = (file, maxWidth = 300, maxHeight = 300, quality = 0.8) => {
   };
 
   if (!token) {
-    return <LoginPage onLogin={handleLogin} onClearCache={clearCache} loading={loading} />;
+    return <LoginPage onLogin={handleLogin} loading={loading} />;
   }
 
   return (
@@ -397,15 +287,20 @@ const resizeImage = (file, maxWidth = 300, maxHeight = 300, quality = 0.8) => {
           hashtag={currentHashtag}
           imageUploading={imageUploading}
           replyingTo={replyingTo}
-          onCancelReply={cancelReply}
+          onCancelReply={() => {
+            setReplyingTo(null);
+            setNewPost('');
+          }}
         />
         
         <PostsList 
           posts={posts} 
           hashtag={currentHashtag}
           onReact={reactToPost}
-          onReport={reportPost}
-          onReply={handleReply}
+          onReply={(post) => {
+            setReplyingTo(post);
+            setNewPost(`@${post.username} `);
+          }}
           userReactions={userReactions}
         />
       </main>
@@ -413,89 +308,18 @@ const resizeImage = (file, maxWidth = 300, maxHeight = 300, quality = 0.8) => {
   );
 }
 
-// 🎨 **IMPROVED EMOTION COMPONENTS**
-function EmotionIndicator({ emotion, type = "post" }) {
-  if (!emotion || emotion === "no_replies") return null;
-  
-  const getEmotionData = (emotion) => {
-    const emotionMap = {
-      joy: { emoji: "😊", color: "#22c55e", label: "Happy" },
-      neutral: { emoji: "😐", color: "#6b7280", label: "Neutral" }, 
-      curiosity: { emoji: "🤔", color: "#3b82f6", label: "Curious" },
-      admiration: { emoji: "😍", color: "#f59e0b", label: "Admiring" },
-      annoyance: { emoji: "😤", color: "#ef4444", label: "Annoyed" },
-      disapproval: { emoji: "👎", color: "#dc2626", label: "Disapproval" },
-      sadness: { emoji: "😢", color: "#6366f1", label: "Sad" },
-      anger: { emoji: "😡", color: "#dc2626", label: "Angry" },
-      fear: { emoji: "😨", color: "#8b5cf6", label: "Fearful" },
-      surprise: { emoji: "😲", color: "#06b6d4", label: "Surprised" },
-      love: { emoji: "❤️", color: "#ec4899", label: "Love" }
-    };
-    return emotionMap[emotion] || { emoji: "😐", color: "#6b7280", label: "Unknown" };
-  };
-
-  const emotionData = getEmotionData(emotion);
-  
-  return (
-    <div className={`emotion-indicator ${type}`} style={{ borderColor: emotionData.color }}>
-      <span className="emotion-emoji">{emotionData.emoji}</span>
-      <span className="emotion-label" style={{ color: emotionData.color }}>
-        {emotionData.label}
-      </span>
-    </div>
-  );
-}
-
-function ReplyEmotionSummary({ replyEmotion }) {
-  if (!replyEmotion || replyEmotion === "no_replies") return null;
-  
-  const parseComplexEmotion = (emotionStr) => {
-    if (emotionStr.includes("%")) {
-      const emotions = emotionStr.split(",").map(e => e.trim());
-      const primary = emotions[0].split("(")[0].trim();
-      return { primary, details: emotionStr };
-    }
-    return { primary: emotionStr, details: null };
-  };
-
-  const parsed = parseComplexEmotion(replyEmotion);
-  
-  return (
-    <div className="reply-vibe-section">
-      <div className="reply-vibe-header">
-        <span className="vibe-icon">💬</span>
-        <span className="vibe-text">Reply Vibe</span>
-      </div>
-      <EmotionIndicator emotion={parsed.primary} type="reply" />
-      {parsed.details && parsed.details !== parsed.primary && (
-        <button className="vibe-details" title={parsed.details}>
-          Details
-        </button>
-      )}
-    </div>
-  );
-}
-
-function LoginPage({ onLogin, onClearCache, loading }) {
+// Clean Login Component - NO MORE AI EMOJIS!
+function LoginPage({ onLogin, loading }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('student');
   const [agreed, setAgreed] = useState(false);
-  const [showDebug, setShowDebug] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (agreed && !loading) {
       onLogin(email, password, role, agreed);
     }
-  };
-
-  const handleClearCache = () => {
-    if (!email.trim()) {
-      alert('Please enter email first');
-      return;
-    }
-    onClearCache(email);
   };
 
   return (
@@ -508,7 +332,6 @@ function LoginPage({ onLogin, onClearCache, loading }) {
         
         <div className="disclaimer-card">
           <div className="disclaimer-header">
-            <span className="warning-icon">⚠️</span>
             <h3>Privacy Notice</h3>
           </div>
           <div className="disclaimer-content">
@@ -582,48 +405,31 @@ function LoginPage({ onLogin, onClearCache, loading }) {
                 Authenticating...
               </>
             ) : (
-              <>
-                <span>🔐</span>
-                Login
-              </>
+              'Sign In'
             )}
           </button>
         </form>
-
-        {showDebug && (
-          <div className="debug-panel">
-            <button onClick={handleClearCache} className="debug-button">
-              Clear Cache
-            </button>
-          </div>
-        )}
-        
-        <button
-          onClick={() => setShowDebug(!showDebug)}
-          className="debug-toggle"
-        >
-          Debug Mode
-        </button>
       </div>
     </div>
   );
 }
 
+// Clean Header - Professional Look
 function Header({ username, onLogout }) {
   return (
     <header className="header">
       <div className="header-content">
         <div className="header-left">
-          <h1 className="app-title">🎓 College Social</h1>
+          <h1 className="app-title">College Social</h1>
           <span className="app-subtitle">Campus Network</span>
         </div>
         <div className="header-right">
           <span className="user-info">
             <span className="username">{username}</span>
-            <span className="status">● Online</span>
+            <span className="status">Online</span>
           </span>
           <button onClick={onLogout} className="logout-button">
-            Logout
+            Sign Out
           </button>
         </div>
       </div>
@@ -631,6 +437,7 @@ function Header({ username, onLogout }) {
   );
 }
 
+// Clean Navigation - No Emojis
 function Navigation({ hashtags, currentHashtag, onHashtagChange }) {
   return (
     <nav className="navigation">
@@ -651,7 +458,7 @@ function Navigation({ hashtags, currentHashtag, onHashtagChange }) {
   );
 }
 
-// 🔧 **REDESIGNED POST COMPOSER**
+// Clean Post Composer - Professional
 function PostComposer({ newPost, setNewPost, onSubmit, onImageUpload, hashtag, imageUploading, replyingTo, onCancelReply }) {
   const fileInputRef = React.useRef(null);
 
@@ -680,19 +487,9 @@ function PostComposer({ newPost, setNewPost, onSubmit, onImageUpload, hashtag, i
               onClick={() => fileInputRef.current?.click()}
               disabled={imageUploading}
               className="image-upload-btn"
-              title="Upload image for Minecraft conversion"
+              title="Upload image"
             >
-              {imageUploading ? (
-                <>
-                  <div className="btn-spinner"></div>
-                  <span>Converting...</span>
-                </>
-              ) : (
-                <>
-                  <span className="upload-icon">🎨</span>
-                  <span>Visual Art</span>
-                </>
-              )}
+              {imageUploading ? 'Converting...' : 'Add Image'}
             </button>
             
             <input
@@ -722,22 +519,21 @@ function PostComposer({ newPost, setNewPost, onSubmit, onImageUpload, hashtag, i
   );
 }
 
-function MinecraftBlockRenderer({ htmlContent }) {
-  return (
-    <div 
-      dangerouslySetInnerHTML={{ __html: htmlContent }}
-      className="minecraft-render"
-    />
-  );
-}
-
+// Clean Post Content Renderer
 function PostContent({ content }) {
   const parts = content.split(/\[VISUAL_BLOCKS\](.*?)\[\/VISUAL_BLOCKS\]/gs);
+  
   return (
     <div className="post-content">
       {parts.map((part, index) => {
         if (index % 2 === 1) {
-          return <MinecraftBlockRenderer key={index} htmlContent={part} />;
+          return (
+            <div 
+              key={index}
+              dangerouslySetInnerHTML={{ __html: part }}
+              className="minecraft-render"
+            />
+          );
         } else {
           return (
             <div key={index} className="text-content">
@@ -755,11 +551,11 @@ function PostContent({ content }) {
   );
 }
 
-function PostsList({ posts, hashtag, onReact, onReport, onReply, userReactions }) {
+// Clean Posts List
+function PostsList({ posts, hashtag, onReact, onReply, userReactions }) {
   if (posts.length === 0) {
     return (
       <div className="empty-state">
-        <div className="empty-icon">💻</div>
         <h3>No posts yet</h3>
         <p>Be the first to post in #{hashtag}</p>
       </div>
@@ -773,7 +569,6 @@ function PostsList({ posts, hashtag, onReact, onReport, onReply, userReactions }
           key={post.id}
           post={post}
           onReact={onReact}
-          onReport={onReport}
           onReply={onReply}
           userReactions={userReactions}
         />
@@ -782,15 +577,9 @@ function PostsList({ posts, hashtag, onReact, onReport, onReply, userReactions }
   );
 }
 
-// ✨ **IMPROVED POST CARD WITH BETTER EMOTION DISPLAY**
-function PostCard({ post, onReact, onReport, onReply, userReactions }) {
-  const [showReportDialog, setShowReportDialog] = useState(false);
+// Clean Post Card - Professional Design
+function PostCard({ post, onReact, onReply, userReactions }) {
   const [showAllReplies, setShowAllReplies] = useState(false);
-
-  const handleReport = () => {
-    setShowReportDialog(false);
-    onReport(post.id);
-  };
 
   const formatTime = (timestamp) => {
     const date = new Date(timestamp);
@@ -810,27 +599,17 @@ function PostCard({ post, onReact, onReport, onReply, userReactions }) {
     <div className="post-card">
       <div className="post-header">
         <div className="post-user-info">
-          <div className="user-row">
+          <div className="user-avatar">
+            {post.username.substring(0, 2).toUpperCase()}
+          </div>
+          <div className="user-details">
             <span className="post-username">{post.username}</span>
             <span className="post-time">{formatTime(post.created_at)}</span>
           </div>
-          {post.emotion && (
-            <EmotionIndicator emotion={post.emotion} type="post" />
-          )}
         </div>
-        
-        {post.report_count > 0 && (
-          <span className="report-count">
-            {post.report_count} reports
-          </span>
-        )}
       </div>
       
       <PostContent content={post.content} />
-      
-      {post.reply_emotion && (
-        <ReplyEmotionSummary replyEmotion={post.reply_emotion} />
-      )}
       
       <div className="post-actions">
         <div className="reaction-buttons">
@@ -838,30 +617,23 @@ function PostCard({ post, onReact, onReport, onReply, userReactions }) {
             onClick={() => onReact(post.id, 'smack', false)}
             className={`reaction-button ${userReactions[post.id] === 'smack' ? 'active' : ''}`}
           >
-            👊 {post.smacks || 0}
+            Like {post.smacks || 0}
           </button>
           
           <button
             onClick={() => onReact(post.id, 'cap', false)}
             className={`reaction-button ${userReactions[post.id] === 'cap' ? 'active' : ''}`}
           >
-            🧢 {post.caps || 0}
+            Dislike {post.caps || 0}
           </button>
           
           <button
             onClick={() => onReply(post)}
             className="action-button"
           >
-            💬 {post.replies?.length || 0}
+            Reply {post.replies?.length || 0}
           </button>
         </div>
-        
-        <button
-          onClick={() => setShowReportDialog(true)}
-          className="report-button"
-        >
-          Report
-        </button>
       </div>
 
       {post.replies && post.replies.length > 0 && (
@@ -869,6 +641,9 @@ function PostCard({ post, onReact, onReport, onReply, userReactions }) {
           {visibleReplies.map(reply => (
             <div key={reply.id} className="reply-card">
               <div className="reply-header">
+                <div className="user-avatar small">
+                  {reply.username.substring(0, 2).toUpperCase()}
+                </div>
                 <span className="reply-username">{reply.username}</span>
                 <span className="reply-time">{formatTime(reply.created_at)}</span>
               </div>
@@ -880,21 +655,14 @@ function PostCard({ post, onReact, onReport, onReply, userReactions }) {
                   onClick={() => onReact(reply.id, 'smack', true)}
                   className={`reaction-button small ${userReactions[reply.id] === 'smack' ? 'active' : ''}`}
                 >
-                  👊 {reply.smacks || 0}
+                  Like {reply.smacks || 0}
                 </button>
                 
                 <button
                   onClick={() => onReact(reply.id, 'cap', true)}
                   className={`reaction-button small ${userReactions[reply.id] === 'cap' ? 'active' : ''}`}
                 >
-                  🧢 {reply.caps || 0}
-                </button>
-                
-                <button
-                  onClick={() => onReport(reply.id)}
-                  className="report-button small"
-                >
-                  Report
+                  Dislike {reply.caps || 0}
                 </button>
               </div>
             </div>
@@ -911,28 +679,6 @@ function PostCard({ post, onReact, onReport, onReply, userReactions }) {
               }
             </button>
           )}
-        </div>
-      )}
-
-      {showReportDialog && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <div className="modal-header">
-              <h3>Report Post</h3>
-            </div>
-            <div className="modal-content">
-              <p>Are you sure you want to report this post?</p>
-              <p className="modal-note">Posts are automatically removed after 20 reports.</p>
-            </div>
-            <div className="modal-actions">
-              <button onClick={handleReport} className="confirm-button">
-                Report
-              </button>
-              <button onClick={() => setShowReportDialog(false)} className="cancel-button">
-                Cancel
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>
