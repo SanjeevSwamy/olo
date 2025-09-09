@@ -386,6 +386,86 @@ async def report_post(post_id: str, authorization: Optional[str] = Header(None))
   );
 }
 
+// Add this after your existing components
+function EmotionTag({ emotion, type = "post" }) {
+  if (!emotion || emotion === "no_replies") return null;
+  
+  const getEmotionColor = (emotion) => {
+    const colors = {
+      joy: "#22c55e",
+      neutral: "#6b7280", 
+      curiosity: "#3b82f6",
+      admiration: "#f59e0b",
+      annoyance: "#ef4444",
+      disapproval: "#dc2626",
+      sadness: "#6366f1",
+      anger: "#dc2626",
+      fear: "#8b5cf6",
+      surprise: "#06b6d4",
+      love: "#ec4899"
+    };
+    return colors[emotion] || "#6b7280";
+  };
+
+  const getEmotionEmoji = (emotion) => {
+    const emojis = {
+      joy: "😊",
+      neutral: "😐",
+      curiosity: "🤔", 
+      admiration: "😍",
+      annoyance: "😤",
+      disapproval: "👎",
+      sadness: "😢",
+      anger: "😡",
+      fear: "😨",
+      surprise: "😲",
+      love: "❤️"
+    };
+    return emojis[emotion] || "😐";
+  };
+
+  return (
+    <span 
+      className={`emotion-tag ${type === "reply" ? "reply-emotion" : "post-emotion"}`}
+      style={{ backgroundColor: getEmotionColor(emotion) }}
+    >
+      {getEmotionEmoji(emotion)} {emotion}
+    </span>
+  );
+}
+
+function ReplyEmotionSummary({ replyEmotion }) {
+  if (!replyEmotion || replyEmotion === "no_replies") return null;
+  
+  // Handle complex reply emotions like "annoyance (33.5%), disapproval (36.0%)"
+  const parseComplexEmotion = (emotionStr) => {
+    if (emotionStr.includes("%")) {
+      const emotions = emotionStr.split(",").map(e => e.trim());
+      const primary = emotions[0].split("(")[0].trim();
+      return {
+        primary: primary,
+        details: emotionStr
+      };
+    }
+    return { primary: emotionStr, details: null };
+  };
+
+  const parsed = parseComplexEmotion(replyEmotion);
+
+  return (
+    <div className="reply-emotion-summary">
+      <span className="reply-emotion-label">💬 Reply Vibe:</span>
+      <EmotionTag emotion={parsed.primary} type="reply" />
+      {parsed.details && parsed.details !== parsed.primary && (
+        <span className="emotion-details" title={parsed.details}>
+          📊
+        </span>
+      )}
+    </div>
+  );
+}
+
+
 function LoginPage({ onLogin, onClearCache, loading }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -720,6 +800,8 @@ function PostCard({ post, onReact, onReport, onReply, userReactions }) {
         <div className="post-user">
           <span className="post-username">{post.username}</span>
           <span className="post-time">{formatTime(post.created_at)}</span>
+            <EmotionTag emotion={post.emotion} />
+       
         </div>
         {post.report_count > 0 && (
           <span className="report-count">
