@@ -16,7 +16,7 @@ function App() {
   const [userReactions, setUserReactions] = useState({});
 
   const hashtags = ['General', 'Trip', 'CollegeEvents', 'Studies', 'Memes', 'Jobs', 'Confessions', 'Sports'];
-  
+
   const fetchPosts = useCallback(async (offset = 0) => {
     try {
       const response = await fetch(`${API_BASE}/posts/${currentHashtag}?limit=20&offset=${offset}`, {
@@ -166,7 +166,6 @@ function App() {
     } catch (error) {
       alert('Failed to create post');
     }
-    
   };
 
   const reactToPost = async (postId, reactionType, isReply = false) => {
@@ -243,32 +242,30 @@ function App() {
     }
   };
 
- const reportPost = async (postId) => {
-  try {
-    const response = await fetch(`${API_BASE}/posts/${postId}/report`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+  const reportPost = async (postId) => {
+    try {
+      const response = await fetch(`${API_BASE}/posts/${postId}/report`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        alert(data.message);
+        if (data.removed) {
+          fetchPosts();
+        }
+      } else {
+        const error = await response.json();
+        alert(error.detail || 'Report failed');
       }
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      alert(data.message);
-      if (data.removed) {
-        fetchPosts(); // Refresh posts
-      }
-    } else {
-      const error = await response.json();
-      alert(error.detail || 'Report failed');
+    } catch (error) {
+      alert('Report failed');
     }
-  } catch (error) {
-    alert('Report failed');
-  }
-};
-
-
+  };
 
   const handleReply = (post) => {
     setReplyingTo(post);
@@ -281,34 +278,30 @@ function App() {
   };
 
   const handleImageUpload = async (file) => {
-  if (!file) return;
-  
-  setImageUploading(true);
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    // ✅ Changed endpoint to visual minecraft
-    const response = await fetch(`${API_BASE}/upload-minecraft-visual`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` },
-      body: formData
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      // ✅ Insert visual blocks with special markers
-      setNewPost(prev => prev + '\n\n🎮 MINECRAFT BLOCKS:\n[VISUAL_BLOCKS]' + data.minecraft_html + '[/VISUAL_BLOCKS]');
-    } else {
-      alert('Minecraft conversion failed');
+    if (!file) return;
+    setImageUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch(`${API_BASE}/upload-minecraft-visual`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setNewPost(prev => prev + '\n\n🎮 MINECRAFT BLOCKS:\n[VISUAL_BLOCKS]' + data.minecraft_html + '[/VISUAL_BLOCKS]');
+      } else {
+        alert('Minecraft conversion failed');
+      }
+    } catch (error) {
+      alert('Minecraft upload failed');
+    } finally {
+      setImageUploading(false);
     }
-  } catch (error) {
-    alert('Minecraft upload failed');
-  } finally {
-    setImageUploading(false);
-  }
-};
-
+  };
 
   const logout = () => {
     localStorage.removeItem('token');
@@ -357,85 +350,68 @@ function App() {
   );
 }
 
-// Add this after your existing components
-function EmotionTag({ emotion, type = "post" }) {
+// 🎨 **IMPROVED EMOTION COMPONENTS**
+function EmotionIndicator({ emotion, type = "post" }) {
   if (!emotion || emotion === "no_replies") return null;
   
-  const getEmotionColor = (emotion) => {
-    const colors = {
-      joy: "#22c55e",
-      neutral: "#6b7280", 
-      curiosity: "#3b82f6",
-      admiration: "#f59e0b",
-      annoyance: "#ef4444",
-      disapproval: "#dc2626",
-      sadness: "#6366f1",
-      anger: "#dc2626",
-      fear: "#8b5cf6",
-      surprise: "#06b6d4",
-      love: "#ec4899"
+  const getEmotionData = (emotion) => {
+    const emotionMap = {
+      joy: { emoji: "😊", color: "#22c55e", label: "Happy" },
+      neutral: { emoji: "😐", color: "#6b7280", label: "Neutral" }, 
+      curiosity: { emoji: "🤔", color: "#3b82f6", label: "Curious" },
+      admiration: { emoji: "😍", color: "#f59e0b", label: "Admiring" },
+      annoyance: { emoji: "😤", color: "#ef4444", label: "Annoyed" },
+      disapproval: { emoji: "👎", color: "#dc2626", label: "Disapproval" },
+      sadness: { emoji: "😢", color: "#6366f1", label: "Sad" },
+      anger: { emoji: "😡", color: "#dc2626", label: "Angry" },
+      fear: { emoji: "😨", color: "#8b5cf6", label: "Fearful" },
+      surprise: { emoji: "😲", color: "#06b6d4", label: "Surprised" },
+      love: { emoji: "❤️", color: "#ec4899", label: "Love" }
     };
-    return colors[emotion] || "#6b7280";
+    return emotionMap[emotion] || { emoji: "😐", color: "#6b7280", label: "Unknown" };
   };
 
-  const getEmotionEmoji = (emotion) => {
-    const emojis = {
-      joy: "😊",
-      neutral: "😐",
-      curiosity: "🤔", 
-      admiration: "😍",
-      annoyance: "😤",
-      disapproval: "👎",
-      sadness: "😢",
-      anger: "😡",
-      fear: "😨",
-      surprise: "😲",
-      love: "❤️"
-    };
-    return emojis[emotion] || "😐";
-  };
-
+  const emotionData = getEmotionData(emotion);
+  
   return (
-    <span 
-      className={`emotion-tag ${type === "reply" ? "reply-emotion" : "post-emotion"}`}
-      style={{ backgroundColor: getEmotionColor(emotion) }}
-    >
-      {getEmotionEmoji(emotion)} {emotion}
-    </span>
+    <div className={`emotion-indicator ${type}`} style={{ borderColor: emotionData.color }}>
+      <span className="emotion-emoji">{emotionData.emoji}</span>
+      <span className="emotion-label" style={{ color: emotionData.color }}>
+        {emotionData.label}
+      </span>
+    </div>
   );
 }
 
 function ReplyEmotionSummary({ replyEmotion }) {
   if (!replyEmotion || replyEmotion === "no_replies") return null;
   
-  // Handle complex reply emotions like "annoyance (33.5%), disapproval (36.0%)"
   const parseComplexEmotion = (emotionStr) => {
     if (emotionStr.includes("%")) {
       const emotions = emotionStr.split(",").map(e => e.trim());
       const primary = emotions[0].split("(")[0].trim();
-      return {
-        primary: primary,
-        details: emotionStr
-      };
+      return { primary, details: emotionStr };
     }
     return { primary: emotionStr, details: null };
   };
 
   const parsed = parseComplexEmotion(replyEmotion);
-
+  
   return (
-    <div className="reply-emotion-summary">
-      <span className="reply-emotion-label">💬 Reply Vibe:</span>
-      <EmotionTag emotion={parsed.primary} type="reply" />
+    <div className="reply-vibe-section">
+      <div className="reply-vibe-header">
+        <span className="vibe-icon">💬</span>
+        <span className="vibe-text">Reply Vibe</span>
+      </div>
+      <EmotionIndicator emotion={parsed.primary} type="reply" />
       {parsed.details && parsed.details !== parsed.primary && (
-        <span className="emotion-details" title={parsed.details}>
-          📊
-        </span>
+        <button className="vibe-details" title={parsed.details}>
+          Details
+        </button>
       )}
     </div>
   );
 }
-
 
 function LoginPage({ onLogin, onClearCache, loading }) {
   const [email, setEmail] = useState('');
@@ -612,71 +588,77 @@ function Navigation({ hashtags, currentHashtag, onHashtagChange }) {
   );
 }
 
+// 🔧 **REDESIGNED POST COMPOSER**
 function PostComposer({ newPost, setNewPost, onSubmit, onImageUpload, hashtag, imageUploading, replyingTo, onCancelReply }) {
   const fileInputRef = React.useRef(null);
-  
+
   return (
     <div className="post-composer">
-      <div className="composer-header">
-        <h3>🎮 Minecraft Block Converter</h3>
-        {replyingTo && (
-          <div className="reply-indicator">
-            Replying to @{replyingTo.username}
-            <button onClick={onCancelReply} className="cancel-reply">×</button>
-          </div>
-        )}
-      </div>
+      {replyingTo && (
+        <div className="reply-indicator">
+          <span className="reply-text">Replying to @{replyingTo.username}</span>
+          <button onClick={onCancelReply} className="cancel-reply">×</button>
+        </div>
+      )}
       
-      <textarea
-        value={newPost}
-        onChange={(e) => setNewPost(e.target.value)}
-        placeholder={`Share something in #${hashtag}...`}
-        className="post-textarea"
-        maxLength={2000}
-      />
-      
-      <div className="composer-actions">
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={imageUploading}
-          className="minecraft-button"
-        >
-          {imageUploading ? (
-            <>
-              <div className="spinner"></div>
-              Converting...
-            </>
-          ) : (
-            <>
-              <span>🎮</span>
-              MINECRAFT_BLOCKS
-            </>
-          )}
-        </button>
-        
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={(e) => onImageUpload(e.target.files[0])}
-          className="hidden"
+      <div className="composer-body">
+        <textarea
+          value={newPost}
+          onChange={(e) => setNewPost(e.target.value)}
+          placeholder={`What's happening in #${hashtag}?`}
+          className="post-textarea"
+          maxLength={2000}
+          rows={3}
         />
         
-        <button 
-          onClick={onSubmit}
-          disabled={!newPost.trim()}
-          className="submit-button"
-        >
-          Post
-        </button>
-      </div>
-      
-      <div className="character-count">
-        {newPost.length}/2000
+        <div className="composer-footer">
+          <div className="composer-tools">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={imageUploading}
+              className="image-upload-btn"
+              title="Upload image for Minecraft conversion"
+            >
+              {imageUploading ? (
+                <>
+                  <div className="btn-spinner"></div>
+                  <span>Converting...</span>
+                </>
+              ) : (
+                <>
+                  <span className="upload-icon">🎨</span>
+                  <span>Visual Art</span>
+                </>
+              )}
+            </button>
+            
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={(e) => onImageUpload(e.target.files[0])}
+              className="hidden"
+            />
+          </div>
+          
+          <div className="composer-actions">
+            <span className="char-count">
+              {newPost.length}/2000
+            </span>
+            <button 
+              onClick={onSubmit}
+              disabled={!newPost.trim() || imageUploading}
+              className="post-submit-btn"
+            >
+              {replyingTo ? 'Reply' : 'Post'}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+
 function MinecraftBlockRenderer({ htmlContent }) {
   return (
     <div 
@@ -687,17 +669,13 @@ function MinecraftBlockRenderer({ htmlContent }) {
 }
 
 function PostContent({ content }) {
-  // Split content to find visual blocks
   const parts = content.split(/\[VISUAL_BLOCKS\](.*?)\[\/VISUAL_BLOCKS\]/gs);
-  
   return (
     <div className="post-content">
       {parts.map((part, index) => {
         if (index % 2 === 1) {
-          // This is Minecraft HTML content
           return <MinecraftBlockRenderer key={index} htmlContent={part} />;
         } else {
-          // Regular text content
           return (
             <div key={index} className="text-content">
               {part.split('\n').map((line, lineIndex) => (
@@ -713,7 +691,6 @@ function PostContent({ content }) {
     </div>
   );
 }
-
 
 function PostsList({ posts, hashtag, onReact, onReport, onReply, userReactions }) {
   if (posts.length === 0) {
@@ -742,15 +719,16 @@ function PostsList({ posts, hashtag, onReact, onReport, onReply, userReactions }
   );
 }
 
+// ✨ **IMPROVED POST CARD WITH BETTER EMOTION DISPLAY**
 function PostCard({ post, onReact, onReport, onReply, userReactions }) {
   const [showReportDialog, setShowReportDialog] = useState(false);
   const [showAllReplies, setShowAllReplies] = useState(false);
-  
+
   const handleReport = () => {
     setShowReportDialog(false);
     onReport(post.id);
   };
-  
+
   const formatTime = (timestamp) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -761,19 +739,23 @@ function PostCard({ post, onReact, onReport, onReply, userReactions }) {
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h`;
     return `${Math.floor(diffInMinutes / 1440)}d`;
   };
-  
+
   const visibleReplies = showAllReplies ? (post.replies || []) : (post.replies || []).slice(0, 3);
   const hasMoreReplies = (post.replies || []).length > 3;
-  
+
   return (
     <div className="post-card">
       <div className="post-header">
-        <div className="post-user">
-          <span className="post-username">{post.username}</span>
-          <span className="post-time">{formatTime(post.created_at)}</span>
-            <EmotionTag emotion={post.emotion} />
-       
+        <div className="post-user-info">
+          <div className="user-row">
+            <span className="post-username">{post.username}</span>
+            <span className="post-time">{formatTime(post.created_at)}</span>
+          </div>
+          {post.emotion && (
+            <EmotionIndicator emotion={post.emotion} type="post" />
+          )}
         </div>
+        
         {post.report_count > 0 && (
           <span className="report-count">
             {post.report_count} reports
@@ -781,10 +763,12 @@ function PostCard({ post, onReact, onReport, onReply, userReactions }) {
         )}
       </div>
       
-      {/* ✅ Use PostContent component for visual blocks */}
       <PostContent content={post.content} />
-  
-      <ReplyEmotionSummary replyEmotion={post.reply_emotion} />
+      
+      {post.reply_emotion && (
+        <ReplyEmotionSummary replyEmotion={post.reply_emotion} />
+      )}
+      
       <div className="post-actions">
         <div className="reaction-buttons">
           <button
@@ -817,7 +801,6 @@ function PostCard({ post, onReact, onReport, onReply, userReactions }) {
         </button>
       </div>
 
-      {/* Rest of your existing reply logic stays the same */}
       {post.replies && post.replies.length > 0 && (
         <div className="replies-section">
           {visibleReplies.map(reply => (
@@ -827,7 +810,6 @@ function PostCard({ post, onReact, onReport, onReply, userReactions }) {
                 <span className="reply-time">{formatTime(reply.created_at)}</span>
               </div>
               
-              {/* ✅ Use PostContent for replies too */}
               <PostContent content={reply.content} />
               
               <div className="reply-actions">
@@ -869,7 +851,6 @@ function PostCard({ post, onReact, onReport, onReply, userReactions }) {
         </div>
       )}
 
-      {/* Existing report dialog */}
       {showReportDialog && (
         <div className="modal-overlay">
           <div className="modal">
