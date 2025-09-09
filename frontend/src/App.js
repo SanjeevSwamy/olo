@@ -278,30 +278,43 @@ function App() {
   };
 
   const handleImageUpload = async (file) => {
-    if (!file) return;
-    setImageUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
+  if (!file) return;
+  setImageUploading(true);
+  
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch(`${API_BASE}/upload-minecraft-visual`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
       
-      const response = await fetch(`${API_BASE}/upload-minecraft-visual`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
+      // ✅ Add the visual blocks but in a cleaner way
+      setNewPost(prev => {
+        const cleanContent = prev.trim();
+        return cleanContent + '\n\n[VISUAL_BLOCKS]' + data.minecraft_html + '[/VISUAL_BLOCKS]';
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        setNewPost(prev => prev + '\n\n🎮 MINECRAFT BLOCKS:\n[VISUAL_BLOCKS]' + data.minecraft_html + '[/VISUAL_BLOCKS]');
-      } else {
-        alert('Minecraft conversion failed');
+      // Clear the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
       }
-    } catch (error) {
-      alert('Minecraft upload failed');
-    } finally {
-      setImageUploading(false);
+      
+    } else {
+      alert('Minecraft conversion failed');
     }
-  };
+  } catch (error) {
+    alert('Minecraft upload failed');
+  } finally {
+    setImageUploading(false);
+  }
+};
+
 
   const logout = () => {
     localStorage.removeItem('token');
