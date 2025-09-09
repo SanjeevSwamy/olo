@@ -100,6 +100,42 @@ function App() {
       alert('Cache clear failed');
     }
   };
+ // Add this function before your App component
+const resizeImage = (file, maxWidth = 300, maxHeight = 300, quality = 0.8) => {
+  return new Promise((resolve) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    img.onload = () => {
+      // Calculate new dimensions while maintaining aspect ratio
+      let { width, height } = img;
+      
+      if (width > height) {
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width = (width * maxHeight) / height;
+          height = maxHeight;
+        }
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
+      
+      // Draw and compress
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      canvas.toBlob(resolve, 'image/jpeg', quality);
+    };
+    
+    img.src = URL.createObjectURL(file);
+  });
+};
+
 
   const handleLogin = async (email, password, role, agreed) => {
     setLoading(true);
@@ -281,9 +317,16 @@ function App() {
   const handleImageUpload = async (file) => {
   if (!file) return;
   setImageUploading(true);
+  
   try {
+    // ✅ Resize image BEFORE upload
+    console.log('Original file size:', (file.size / 1024 / 1024).toFixed(2) + 'MB');
+    
+    const resizedFile = await resizeImage(file, 200, 200, 0.7); // Smaller size & lower quality
+    console.log('Resized file size:', (resizedFile.size / 1024 / 1024).toFixed(2) + 'MB');
+    
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', resizedFile, 'resized-image.jpg');
     
     const response = await fetch(`${API_BASE}/upload-minecraft-visual`, {
       method: 'POST',
@@ -294,9 +337,9 @@ function App() {
     if (response.ok) {
       const data = await response.json();
       
-      // ✅ Check if the HTML is too large
-      if (data.minecraft_html && data.minecraft_html.length > 50000) { // 50KB limit
-        alert('Image is too complex for Minecraft conversion. Try a smaller or simpler image.');
+      // ✅ Additional check for HTML size
+      if (data.minecraft_html && data.minecraft_html.length > 30000) { // 30KB limit
+        alert('Even after resizing, the image creates too complex Minecraft art. Try a simpler image with fewer colors.');
         return;
       }
       
@@ -313,11 +356,13 @@ function App() {
       alert('Minecraft conversion failed');
     }
   } catch (error) {
+    console.error('Upload error:', error);
     alert('Minecraft upload failed');
   } finally {
     setImageUploading(false);
   }
 };
+
 
 
 
