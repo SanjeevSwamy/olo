@@ -1132,6 +1132,7 @@ body {
   animation: spin 1s linear infinite;
 }
 /* Emotion Tags */
+/* Emotion Tags */
 .emotion-tag {
   display: inline-flex;
   align-items: center;
@@ -1146,13 +1147,11 @@ body {
 }
 
 .post-emotion {
-  /* Post emotions are slightly larger */
   padding: 3px 10px;
   font-size: 0.8rem;
 }
 
 .reply-emotion {
-  /* Reply emotions are smaller */
   padding: 2px 6px;
   font-size: 0.7rem;
 }
@@ -1180,15 +1179,7 @@ body {
   font-size: 0.7rem;
 }
 
-/* Hover effects */
 .emotion-tag:hover {
   transform: scale(1.05);
   transition: transform 0.1s ease;
 }
-
-/* Dark theme compatibility */
-.reply-emotion-summary {
-  background: rgba(15, 23, 42, 0.3);
-  border-left-color: var(--primary-green);
-}
-
