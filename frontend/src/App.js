@@ -281,7 +281,6 @@ function App() {
   const handleImageUpload = async (file) => {
   if (!file) return;
   setImageUploading(true);
-  
   try {
     const formData = new FormData();
     formData.append('file', file);
@@ -295,13 +294,17 @@ function App() {
     if (response.ok) {
       const data = await response.json();
       
-      // ✅ Add the visual blocks but in a cleaner way
+      // ✅ Check if the HTML is too large
+      if (data.minecraft_html && data.minecraft_html.length > 50000) { // 50KB limit
+        alert('Image is too complex for Minecraft conversion. Try a smaller or simpler image.');
+        return;
+      }
+      
       setNewPost(prev => {
         const cleanContent = prev.trim();
         return cleanContent + '\n\n[VISUAL_BLOCKS]' + data.minecraft_html + '[/VISUAL_BLOCKS]';
       });
       
-      // Clear the file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -315,6 +318,7 @@ function App() {
     setImageUploading(false);
   }
 };
+
 
 
   const logout = () => {
