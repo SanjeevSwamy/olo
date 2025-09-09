@@ -243,60 +243,31 @@ function App() {
     }
   };
 
- @app.post("/posts/{post_id}/report")
-async def report_post(post_id: str, authorization: Optional[str] = Header(None)):
-    """Report a post"""
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(401, "Authorization token required")
+ const reportPost = async (postId) => {
+  try {
+    const response = await fetch(`${API_BASE}/posts/${postId}/report`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
     
-    token = authorization.replace("Bearer ", "")
-    logger.info(f"🔍 Report request - Token: {token[:50]}...")  # Log token
-    
-    user = get_current_user(token)
-    logger.info(f"🔍 Report request - User: {user}")  # Log user info
-    
-    try:
-        # Insert report with detailed logging
-        logger.info(f"🔍 Attempting to insert report for post {post_id} by user {user['user_id']}")
-        
-        supabase.table("reports").insert({
-            "post_id": post_id,
-            "reporter_user_id": user["user_id"]
-        }).execute()
-        
-        logger.info(f"✅ Report inserted successfully!")
-        
-        # Check report count
-        reports = supabase.table("reports").select("id").eq("post_id", post_id).execute()
-        report_count = len(reports.data)
-        
-        # Auto-remove if threshold reached
-        if report_count >= REPORT_THRESHOLD:
-            supabase.table("posts").update({"is_removed": True}).eq("id", post_id).execute()
-            logger.info(f"🚨 Post auto-removed: {report_count} reports")
-            
-            return {
-                "success": True,
-                "report_count": report_count,
-                "threshold": REPORT_THRESHOLD,
-                "message": "Post removed due to community reports",
-                "removed": True
-            }
-        
-        return {
-            "success": True,
-            "report_count": report_count,
-            "threshold": REPORT_THRESHOLD,
-            "message": f"{report_count}/{REPORT_THRESHOLD} reports needed to remove"
-        }
-        
-    except Exception as e:
-        if "duplicate" in str(e).lower():
-            raise HTTPException(400, "You already reported this post")
-        logger.error(f"💥 Detailed error reporting post {post_id}: {e}")
-        logger.error(f"💥 Error type: {type(e)}")
-        logger.error(f"💥 User attempting report: {user}")
-        raise HTTPException(500, "Failed to report post")
+    if (response.ok) {
+      const data = await response.json();
+      alert(data.message);
+      if (data.removed) {
+        fetchPosts(); // Refresh posts
+      }
+    } else {
+      const error = await response.json();
+      alert(error.detail || 'Report failed');
+    }
+  } catch (error) {
+    alert('Report failed');
+  }
+};
+
 
 
   const handleReply = (post) => {
@@ -812,7 +783,8 @@ function PostCard({ post, onReact, onReport, onReply, userReactions }) {
       
       {/* ✅ Use PostContent component for visual blocks */}
       <PostContent content={post.content} />
-      
+  
+      <ReplyEmotionSummary replyEmotion={post.reply_emotion} />
       <div className="post-actions">
         <div className="reaction-buttons">
           <button
