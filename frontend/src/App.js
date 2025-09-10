@@ -458,7 +458,8 @@ function Header({ username, onLogout }) {
 }
 
 // Clean Navigation - No Emojis
-function Navigation({ hashtags, currentHashtag, onHashtagChange }) {
+// Renamed to avoid conflict
+function AppNavigation({ hashtags, currentHashtag, onHashtagChange, onShowSentiment }) {
   return (
     <nav className="navigation">
       <div className="nav-content">
@@ -472,12 +473,18 @@ function Navigation({ hashtags, currentHashtag, onHashtagChange }) {
               #{tag}
             </button>
           ))}
+          <button
+            onClick={onShowSentiment}
+            className="nav-tab sentiment-tab"
+            title="View sentiment analysis for this hashtag"
+          >
+            📊 Sentiment Analysis
+          </button>
         </div>
       </div>
     </nav>
   );
 }
-// Add this component to your App.js
 
 function SentimentAnalysis({ hashtag, onClose }) {
   const [sentimentData, setSentimentData] = useState(null);
