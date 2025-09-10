@@ -31,10 +31,12 @@ function App() {
           ...post,
           smacks: post.smacks || 0,
           caps: post.caps || 0,
+          report_count: post.report_count || 0, // ADD REPORT COUNT
           replies: (post.replies || []).map(reply => ({
             ...reply,
             smacks: reply.smacks || 0,
-            caps: reply.caps || 0
+            caps: reply.caps || 0,
+            report_count: reply.report_count || 0 // ADD REPORT COUNT FOR REPLIES
           }))
         }));
         setPosts(postsWithCounts);
@@ -221,6 +223,35 @@ function App() {
     }
   };
 
+  // NEW REPORT FUNCTION
+  const reportPost = async (postId) => {
+    if (!window.confirm('Are you sure you want to report this post?')) return;
+    
+    try {
+      const response = await fetch(`${API_BASE}/posts/${postId}/report`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json' 
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        alert(data.message);
+        if (data.removed) {
+          // Post was auto-removed due to reports
+          fetchPosts(); // Refresh to show updated posts
+        }
+      } else {
+        throw new Error(data.detail || 'Failed to report');
+      }
+    } catch (error) {
+      alert(`Report failed: ${error.message}`);
+    }
+  };
+
   const handleImageUpload = async (file) => {
     if (!file) return;
     setImageUploading(true);
@@ -303,6 +334,7 @@ function App() {
             setReplyingTo(post);
             setNewPost(`@${post.username} `);
           }}
+          onReport={reportPost} // ADD REPORT PROP
           userReactions={userReactions}
         />
       </main>
@@ -323,14 +355,14 @@ function LoginPage({ onLogin, loading }) {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('student');
   const [agreed, setAgreed] = useState(false);
-
+  
   const handleSubmit = (e) => {
     e.preventDefault();
     if (agreed && !loading) {
       onLogin(email, password, role, agreed);
     }
   };
-
+  
   return (
     <div className="login-container">
       <div className="login-card">
@@ -361,7 +393,7 @@ function LoginPage({ onLogin, loading }) {
             </label>
           </div>
         </div>
-
+        
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
             <label>Role</label>
@@ -446,7 +478,7 @@ function Header({ username, onLogout }) {
   );
 }
 
-// FIXED: Single Navigation Component
+// Navigation Component
 function Navigation({ hashtags, currentHashtag, onHashtagChange, onShowSentiment }) {
   return (
     <nav className="navigation">
@@ -471,6 +503,67 @@ function Navigation({ hashtags, currentHashtag, onHashtagChange, onShowSentiment
         </div>
       </div>
     </nav>
+  );
+}
+
+// UPDATED PostComposer - REMOVED maxLength (NO CHARACTER LIMIT!)
+function PostComposer({ newPost, setNewPost, onSubmit, onImageUpload, hashtag, imageUploading, replyingTo, onCancelReply }) {
+  const fileInputRef = React.useRef(null);
+  
+  return (
+    <div className="post-composer">
+      {replyingTo && (
+        <div className="reply-indicator">
+          <span className="reply-text">Replying to @{replyingTo.username}</span>
+          <button onClick={onCancelReply} className="cancel-reply">×</button>
+        </div>
+      )}
+      
+      <div className="composer-body">
+        <textarea
+          value={newPost}
+          onChange={(e) => setNewPost(e.target.value)}
+          placeholder={`What's happening in #${hashtag}?`}
+          className="post-textarea"
+          // REMOVED maxLength={2000} - NO CHARACTER LIMIT!
+          rows={3}
+        />
+        
+        <div className="composer-footer">
+          <div className="composer-tools">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={imageUploading}
+              className="image-upload-btn"
+              title="Upload image"
+            >
+              {imageUploading ? 'Converting...' : 'Add Image'}
+            </button>
+            
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={(e) => onImageUpload(e.target.files[0])}
+              className="hidden"
+            />
+          </div>
+          
+          <div className="composer-actions">
+            <span className="char-count">
+              {newPost.length} characters
+            </span>
+            <button 
+              onClick={onSubmit}
+              disabled={!newPost.trim() || imageUploading}
+              className="post-submit-btn"
+            >
+              {replyingTo ? 'Reply' : 'Post'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -511,10 +604,16 @@ function SentimentAnalysis({ hashtag, onClose }) {
   };
 
   const getEmotionIcon = (emotion) => {
+    // Handle compound emotions like "positive (2), curious (1)"
+    if (emotion && emotion.includes(',')) {
+      return '🤔'; // Mixed emotions icon
+    }
+    
     switch (emotion) {
       case 'positive': case 'joy': return '😊';
       case 'negative': case 'sadness': case 'anger': case 'fear': return '😞';
       case 'neutral': case 'curiosity': case 'admiration': return '😐';
+      case 'curious': case 'uncertain': return '🤔';
       case 'no_replies': return '💭';
       case 'unknown': case null: return '❓';
       default: return '🤔';
@@ -522,10 +621,16 @@ function SentimentAnalysis({ hashtag, onClose }) {
   };
 
   const getEmotionColor = (emotion) => {
+    // Handle compound emotions
+    if (emotion && emotion.includes(',')) {
+      return '#722ed1'; // Purple for mixed emotions
+    }
+    
     switch (emotion) {
       case 'positive': case 'joy': return '#52c41a';
       case 'negative': case 'sadness': case 'anger': case 'fear': return '#ff4d4f';
       case 'neutral': case 'curiosity': case 'admiration': return '#faad14';
+      case 'curious': case 'uncertain': return '#722ed1';
       case 'no_replies': return '#8c8c8c';
       case 'unknown': case null: return '#d9d9d9';
       default: return '#722ed1';
@@ -533,6 +638,11 @@ function SentimentAnalysis({ hashtag, onClose }) {
   };
 
   const getEmotionLabel = (emotion) => {
+    // Handle compound emotions like "positive (2), curious (1)"
+    if (emotion && emotion.includes(',')) {
+      return emotion; // Display as-is for compound emotions
+    }
+    
     switch (emotion) {
       case 'positive': case 'joy': return 'Positive';
       case 'negative': return 'Negative';
@@ -540,7 +650,8 @@ function SentimentAnalysis({ hashtag, onClose }) {
       case 'anger': return 'Angry';
       case 'fear': return 'Fearful';
       case 'neutral': return 'Neutral';
-      case 'curiosity': return 'Curious';
+      case 'curious': case 'curiosity': return 'Curious';
+      case 'uncertain': return 'Uncertain';
       case 'admiration': return 'Admiring';
       case 'no_replies': return 'No Replies';
       case 'unknown': case null: return 'Unknown';
@@ -690,63 +801,171 @@ function SentimentAnalysis({ hashtag, onClose }) {
   );
 }
 
-// Clean Post Composer
-function PostComposer({ newPost, setNewPost, onSubmit, onImageUpload, hashtag, imageUploading, replyingTo, onCancelReply }) {
-  const fileInputRef = React.useRef(null);
+// UPDATED PostsList - ADD onReport prop
+function PostsList({ posts, hashtag, onReact, onReply, onReport, userReactions }) {
+  if (posts.length === 0) {
+    return (
+      <div className="empty-state">
+        <h3>No posts yet</h3>
+        <p>Be the first to post in #{hashtag}</p>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="posts-list">
+      {posts.map(post => (
+        <PostCard
+          key={post.id}
+          post={post}
+          onReact={onReact}
+          onReply={onReply}
+          onReport={onReport} // ADD REPORT PROP
+          userReactions={userReactions}
+        />
+      ))}
+    </div>
+  );
+}
+
+// COMPLETELY UPDATED PostCard - REPLY BUTTONS INSIDE EACH POST/REPLY + REPORT FEATURE
+function PostCard({ post, onReact, onReply, onReport, userReactions }) {
+  const [showAllReplies, setShowAllReplies] = useState(false);
+  
+  const formatTime = (timestamp) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now - date) / 1000 / 60);
+    
+    if (diffInMinutes < 1) return 'now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h`;
+    return `${Math.floor(diffInMinutes / 1440)}d`;
+  };
+
+  const visibleReplies = showAllReplies ? (post.replies || []) : (post.replies || []).slice(0, 3);
+  const hasMoreReplies = (post.replies || []).length > 3;
 
   return (
-    <div className="post-composer">
-      {replyingTo && (
-        <div className="reply-indicator">
-          <span className="reply-text">Replying to @{replyingTo.username}</span>
-          <button onClick={onCancelReply} className="cancel-reply">×</button>
+    <div className="post-card">
+      {/* MAIN POST BLOCK */}
+      <div className="main-post-block">
+        <div className="post-header">
+          <div className="post-user-info">
+            <div className="user-avatar">
+              {post.username.substring(0, 2).toUpperCase()}
+            </div>
+            <div className="user-details">
+              <span className="post-username">{post.username}</span>
+              <span className="post-time">{formatTime(post.created_at)}</span>
+            </div>
+          </div>
+          {/* REPORT BUTTON FOR MAIN POST */}
+          <button 
+            onClick={() => onReport(post.id)}
+            className="report-button"
+            title="Report this post"
+          >
+            Report
+            {post.report_count >= 10 && ` (${post.report_count})`}
+          </button>
         </div>
-      )}
-      
-      <div className="composer-body">
-        <textarea
-          value={newPost}
-          onChange={(e) => setNewPost(e.target.value)}
-          placeholder={`What's happening in #${hashtag}?`}
-          className="post-textarea"
-          maxLength={2000}
-          rows={3}
-        />
         
-        <div className="composer-footer">
-          <div className="composer-tools">
+        <PostContent content={post.content} />
+        
+        {/* POST ACTIONS - REPLY BUTTON INSIDE POST */}
+        <div className="post-actions">
+          <div className="reaction-buttons">
             <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={imageUploading}
-              className="image-upload-btn"
-              title="Upload image"
+              onClick={() => onReact(post.id, 'smack', false)}
+              className={`reaction-button ${userReactions[post.id] === 'smack' ? 'active' : ''}`}
             >
-              {imageUploading ? 'Converting...' : 'Add Image'}
+              Like {post.smacks || 0}
             </button>
             
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={(e) => onImageUpload(e.target.files[0])}
-              className="hidden"
-            />
-          </div>
-          
-          <div className="composer-actions">
-            <span className="char-count">
-              {newPost.length}/2000
-            </span>
-            <button 
-              onClick={onSubmit}
-              disabled={!newPost.trim() || imageUploading}
-              className="post-submit-btn"
+            <button
+              onClick={() => onReact(post.id, 'cap', false)}
+              className={`reaction-button ${userReactions[post.id] === 'cap' ? 'active' : ''}`}
             >
-              {replyingTo ? 'Reply' : 'Post'}
+              Dislike {post.caps || 0}
+            </button>
+            
+            {/* REPLY BUTTON MOVED HERE! */}
+            <button
+              onClick={() => onReply(post)}
+              className="action-button"
+            >
+              Reply {post.replies?.length || 0}
             </button>
           </div>
         </div>
       </div>
+
+      {/* REPLIES SECTION */}
+      {post.replies && post.replies.length > 0 && (
+        <div className="replies-section">
+          {visibleReplies.map(reply => (
+            <div key={reply.id} className="reply-block">
+              <div className="reply-header">
+                <div className="user-avatar small">
+                  {reply.username.substring(0, 2).toUpperCase()}
+                </div>
+                <span className="reply-username">{reply.username}</span>
+                <span className="reply-time">{formatTime(reply.created_at)}</span>
+                
+                {/* REPORT BUTTON FOR EACH REPLY */}
+                <button 
+                  onClick={() => onReport(reply.id)}
+                  className="report-button small"
+                  title="Report this reply"
+                >
+                  Report
+                  {reply.report_count >= 10 && ` (${reply.report_count})`}
+                </button>
+              </div>
+              
+              <PostContent content={reply.content} />
+              
+              {/* REPLY ACTIONS - REPLY BUTTON INSIDE EACH REPLY */}
+              <div className="reply-actions">
+                <button
+                  onClick={() => onReact(reply.id, 'smack', true)}
+                  className={`reaction-button small ${userReactions[reply.id] === 'smack' ? 'active' : ''}`}
+                >
+                  Like {reply.smacks || 0}
+                </button>
+                
+                <button
+                  onClick={() => onReact(reply.id, 'cap', true)}
+                  className={`reaction-button small ${userReactions[reply.id] === 'cap' ? 'active' : ''}`}
+                >
+                  Dislike {reply.caps || 0}
+                </button>
+                
+                {/* REPLY BUTTON FOR REPLYING TO THIS REPLY */}
+                <button
+                  onClick={() => onReply(reply)}
+                  className="action-button small"
+                >
+                  Reply
+                </button>
+              </div>
+            </div>
+          ))}
+          
+          {hasMoreReplies && (
+            <button
+              onClick={() => setShowAllReplies(!showAllReplies)}
+              className="show-more-button"
+            >
+              {showAllReplies ? 
+                'Show less' : 
+                `Show ${post.replies.length - 3} more replies`
+              }
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -779,140 +998,6 @@ function PostContent({ content }) {
           );
         }
       })}
-    </div>
-  );
-}
-
-// Clean Posts List
-function PostsList({ posts, hashtag, onReact, onReply, userReactions }) {
-  if (posts.length === 0) {
-    return (
-      <div className="empty-state">
-        <h3>No posts yet</h3>
-        <p>Be the first to post in #{hashtag}</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="posts-list">
-      {posts.map(post => (
-        <PostCard
-          key={post.id}
-          post={post}
-          onReact={onReact}
-          onReply={onReply}
-          userReactions={userReactions}
-        />
-      ))}
-    </div>
-  );
-}
-
-// Clean Post Card
-function PostCard({ post, onReact, onReply, userReactions }) {
-  const [showAllReplies, setShowAllReplies] = useState(false);
-
-  const formatTime = (timestamp) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffInMinutes = Math.floor((now - date) / 1000 / 60);
-    
-    if (diffInMinutes < 1) return 'now';
-    if (diffInMinutes < 60) return `${diffInMinutes}m`;
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h`;
-    return `${Math.floor(diffInMinutes / 1440)}d`;
-  };
-
-  const visibleReplies = showAllReplies ? (post.replies || []) : (post.replies || []).slice(0, 3);
-  const hasMoreReplies = (post.replies || []).length > 3;
-
-  return (
-    <div className="post-card">
-      <div className="post-header">
-        <div className="post-user-info">
-          <div className="user-avatar">
-            {post.username.substring(0, 2).toUpperCase()}
-          </div>
-          <div className="user-details">
-            <span className="post-username">{post.username}</span>
-            <span className="post-time">{formatTime(post.created_at)}</span>
-          </div>
-        </div>
-      </div>
-      
-      <PostContent content={post.content} />
-      
-      <div className="post-actions">
-        <div className="reaction-buttons">
-          <button
-            onClick={() => onReact(post.id, 'smack', false)}
-            className={`reaction-button ${userReactions[post.id] === 'smack' ? 'active' : ''}`}
-          >
-            Like {post.smacks || 0}
-          </button>
-          
-          <button
-            onClick={() => onReact(post.id, 'cap', false)}
-            className={`reaction-button ${userReactions[post.id] === 'cap' ? 'active' : ''}`}
-          >
-            Dislike {post.caps || 0}
-          </button>
-          
-          <button
-            onClick={() => onReply(post)}
-            className="action-button"
-          >
-            Reply {post.replies?.length || 0}
-          </button>
-        </div>
-      </div>
-
-      {post.replies && post.replies.length > 0 && (
-        <div className="replies-section">
-          {visibleReplies.map(reply => (
-            <div key={reply.id} className="reply-card">
-              <div className="reply-header">
-                <div className="user-avatar small">
-                  {reply.username.substring(0, 2).toUpperCase()}
-                </div>
-                <span className="reply-username">{reply.username}</span>
-                <span className="reply-time">{formatTime(reply.created_at)}</span>
-              </div>
-              
-              <PostContent content={reply.content} />
-              
-              <div className="reply-actions">
-                <button
-                  onClick={() => onReact(reply.id, 'smack', true)}
-                  className={`reaction-button small ${userReactions[reply.id] === 'smack' ? 'active' : ''}`}
-                >
-                  Like {reply.smacks || 0}
-                </button>
-                
-                <button
-                  onClick={() => onReact(reply.id, 'cap', true)}
-                  className={`reaction-button small ${userReactions[reply.id] === 'cap' ? 'active' : ''}`}
-                >
-                  Dislike {reply.caps || 0}
-                </button>
-              </div>
-            </div>
-          ))}
-          
-          {hasMoreReplies && (
-            <button
-              onClick={() => setShowAllReplies(!showAllReplies)}
-              className="show-more-button"
-            >
-              {showAllReplies ? 
-                'Show less' : 
-                `Show ${post.replies.length - 3} more replies`
-              }
-            </button>
-          )}
-        </div>
-      )}
     </div>
   );
 }
