@@ -31,12 +31,12 @@ function App() {
           ...post,
           smacks: post.smacks || 0,
           caps: post.caps || 0,
-          report_count: post.report_count || 0, // ADD REPORT COUNT
+          report_count: post.report_count || 0,
           replies: (post.replies || []).map(reply => ({
             ...reply,
             smacks: reply.smacks || 0,
             caps: reply.caps || 0,
-            report_count: reply.report_count || 0 // ADD REPORT COUNT FOR REPLIES
+            report_count: reply.report_count || 0
           }))
         }));
         setPosts(postsWithCounts);
@@ -85,7 +85,6 @@ function App() {
     }
   }, []);
 
-  // Image resize function
   const resizeImage = (file, maxWidth = 300, maxHeight = 300, quality = 0.8) => {
     return new Promise((resolve) => {
       const canvas = document.createElement('canvas');
@@ -223,7 +222,6 @@ function App() {
     }
   };
 
-  // NEW REPORT FUNCTION
   const reportPost = async (postId) => {
     if (!window.confirm('Are you sure you want to report this post?')) return;
     
@@ -241,8 +239,7 @@ function App() {
       if (response.ok) {
         alert(data.message);
         if (data.removed) {
-          // Post was auto-removed due to reports
-          fetchPosts(); // Refresh to show updated posts
+          fetchPosts();
         }
       } else {
         throw new Error(data.detail || 'Failed to report');
@@ -301,6 +298,9 @@ function App() {
     return <LoginPage onLogin={handleLogin} loading={loading} />;
   }
 
+  // LIMIT TO TOP 3 POSTS ONLY
+  const displayedPosts = posts.slice(0, 3);
+
   return (
     <div className="app-container">
       <Header username={username} onLogout={logout} />
@@ -312,30 +312,37 @@ function App() {
       />
       
       <main className="main-content">
-        <PostComposer 
+        {/* ONLY SHOW TOP COMPOSER IF NOT REPLYING */}
+        {!replyingTo && (
+          <PostComposer 
+            newPost={newPost}
+            setNewPost={setNewPost}
+            onSubmit={createPost}
+            onImageUpload={handleImageUpload}
+            hashtag={currentHashtag}
+            imageUploading={imageUploading}
+            replyingTo={null}
+            onCancelReply={null}
+          />
+        )}
+        
+        <PostsList 
+          posts={displayedPosts}
+          hashtag={currentHashtag}
+          onReact={reactToPost}
+          onReply={(post) => setReplyingTo(post)}
+          onReport={reportPost}
+          userReactions={userReactions}
+          replyingTo={replyingTo}
           newPost={newPost}
           setNewPost={setNewPost}
-          onSubmit={createPost}
-          onImageUpload={handleImageUpload}
-          hashtag={currentHashtag}
-          imageUploading={imageUploading}
-          replyingTo={replyingTo}
+          createPost={createPost}
           onCancelReply={() => {
             setReplyingTo(null);
             setNewPost('');
           }}
-        />
-        
-        <PostsList 
-          posts={posts} 
-          hashtag={currentHashtag}
-          onReact={reactToPost}
-          onReply={(post) => {
-            setReplyingTo(post);
-            setNewPost(`@${post.username} `);
-          }}
-          onReport={reportPost} // ADD REPORT PROP
-          userReactions={userReactions}
+          handleImageUpload={handleImageUpload}
+          imageUploading={imageUploading}
         />
       </main>
 
@@ -349,7 +356,7 @@ function App() {
   );
 }
 
-// Clean Login Component
+// LOGIN PAGE COMPONENT
 function LoginPage({ onLogin, loading }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -455,7 +462,7 @@ function LoginPage({ onLogin, loading }) {
   );
 }
 
-// Clean Header
+// HEADER COMPONENT
 function Header({ username, onLogout }) {
   return (
     <header className="header">
@@ -470,6 +477,7 @@ function Header({ username, onLogout }) {
             <span className="status">Online</span>
           </span>
           <button onClick={onLogout} className="logout-button">
+            <span className="btn-icon">🚪</span>
             Sign Out
           </button>
         </div>
@@ -478,7 +486,7 @@ function Header({ username, onLogout }) {
   );
 }
 
-// Navigation Component
+// NAVIGATION COMPONENT
 function Navigation({ hashtags, currentHashtag, onHashtagChange, onShowSentiment }) {
   return (
     <nav className="navigation">
@@ -498,7 +506,8 @@ function Navigation({ hashtags, currentHashtag, onHashtagChange, onShowSentiment
             className="nav-tab sentiment-tab"
             title="View sentiment analysis for this hashtag"
           >
-            📊 Sentiment Analysis
+            <span className="btn-icon">📊</span>
+            Sentiment Analysis
           </button>
         </div>
       </div>
@@ -506,16 +515,21 @@ function Navigation({ hashtags, currentHashtag, onHashtagChange, onShowSentiment
   );
 }
 
-// UPDATED PostComposer - REMOVED maxLength (NO CHARACTER LIMIT!)
-function PostComposer({ newPost, setNewPost, onSubmit, onImageUpload, hashtag, imageUploading, replyingTo, onCancelReply }) {
+// POST COMPOSER COMPONENT
+function PostComposer({ newPost, setNewPost, onSubmit, onImageUpload, hashtag, imageUploading, replyingTo, onCancelReply, inline = false }) {
   const fileInputRef = React.useRef(null);
   
   return (
-    <div className="post-composer">
+    <div className={`post-composer ${inline ? 'inline' : ''}`}>
       {replyingTo && (
         <div className="reply-indicator">
-          <span className="reply-text">Replying to @{replyingTo.username}</span>
-          <button onClick={onCancelReply} className="cancel-reply">×</button>
+          <span className="reply-text">
+            <span className="btn-icon">↩️</span>
+            Replying to @{replyingTo.username}
+          </span>
+          <button onClick={onCancelReply} className="cancel-reply-btn">
+            <span className="btn-icon">✕</span>
+          </button>
         </div>
       )}
       
@@ -523,10 +537,9 @@ function PostComposer({ newPost, setNewPost, onSubmit, onImageUpload, hashtag, i
         <textarea
           value={newPost}
           onChange={(e) => setNewPost(e.target.value)}
-          placeholder={`What's happening in #${hashtag}?`}
+          placeholder={replyingTo ? `Reply to @${replyingTo.username}...` : `What's happening in #${hashtag}?`}
           className="post-textarea"
-          // REMOVED maxLength={2000} - NO CHARACTER LIMIT!
-          rows={3}
+          rows={inline ? 3 : 4}
         />
         
         <div className="composer-footer">
@@ -534,10 +547,11 @@ function PostComposer({ newPost, setNewPost, onSubmit, onImageUpload, hashtag, i
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={imageUploading}
-              className="image-upload-btn"
+              className="tool-btn"
               title="Upload image"
             >
-              {imageUploading ? 'Converting...' : 'Add Image'}
+              <span className="btn-icon">📸</span>
+              <span className="btn-text">{imageUploading ? 'Converting...' : 'Image'}</span>
             </button>
             
             <input
@@ -556,9 +570,10 @@ function PostComposer({ newPost, setNewPost, onSubmit, onImageUpload, hashtag, i
             <button 
               onClick={onSubmit}
               disabled={!newPost.trim() || imageUploading}
-              className="post-submit-btn"
+              className="submit-btn"
             >
-              {replyingTo ? 'Reply' : 'Post'}
+              <span className="btn-icon">{replyingTo ? '↩️' : '📝'}</span>
+              <span className="btn-text">{replyingTo ? 'Reply' : 'Post'}</span>
             </button>
           </div>
         </div>
@@ -567,7 +582,250 @@ function PostComposer({ newPost, setNewPost, onSubmit, onImageUpload, hashtag, i
   );
 }
 
-// Sentiment Analysis Component
+// POST CONTENT RENDERER COMPONENT
+function PostContent({ content }) {
+  const parts = content.split(/\[VISUAL_BLOCKS\](.*?)\[\/VISUAL_BLOCKS\]/gs);
+  
+  return (
+    <div className="post-content">
+      {parts.map((part, index) => {
+        if (index % 2 === 1) {
+          return (
+            <div 
+              key={index}
+              dangerouslySetInnerHTML={{ __html: part }}
+              className="minecraft-render"
+            />
+          );
+        } else {
+          return (
+            <div key={index} className="text-content">
+              {part.split('\n').map((line, lineIndex) => (
+                <React.Fragment key={lineIndex}>
+                  {line}
+                  {lineIndex < part.split('\n').length - 1 && <br />}
+                </React.Fragment>
+              ))}
+            </div>
+          );
+        }
+      })}
+    </div>
+  );
+}
+
+// POSTS LIST COMPONENT
+function PostsList({ posts, hashtag, onReact, onReply, onReport, userReactions, replyingTo, newPost, setNewPost, createPost, onCancelReply, handleImageUpload, imageUploading }) {
+  if (posts.length === 0) {
+    return (
+      <div className="empty-state">
+        <div className="empty-icon">🌟</div>
+        <h3>No posts yet</h3>
+        <p>Be the first to post in #{hashtag}</p>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="posts-list">
+      {posts.map(post => (
+        <PostCard
+          key={post.id}
+          post={post}
+          onReact={onReact}
+          onReply={onReply}
+          onReport={onReport}
+          userReactions={userReactions}
+          replyingTo={replyingTo}
+          newPost={newPost}
+          setNewPost={setNewPost}
+          createPost={createPost}
+          onCancelReply={onCancelReply}
+          handleImageUpload={handleImageUpload}
+          imageUploading={imageUploading}
+          hashtag={hashtag}
+        />
+      ))}
+    </div>
+  );
+}
+
+// POST CARD COMPONENT
+function PostCard({ post, onReact, onReply, onReport, userReactions, replyingTo, newPost, setNewPost, createPost, onCancelReply, handleImageUpload, imageUploading, hashtag }) {
+  const [showAllReplies, setShowAllReplies] = useState(false);
+  
+  const formatTime = (timestamp) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now - date) / 1000 / 60);
+    
+    if (diffInMinutes < 1) return 'now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h`;
+    return `${Math.floor(diffInMinutes / 1440)}d`;
+  };
+
+  const visibleReplies = showAllReplies ? (post.replies || []) : (post.replies || []).slice(0, 3);
+  const hasMoreReplies = (post.replies || []).length > 3;
+
+  return (
+    <div className="post-card">
+      {/* MAIN POST */}
+      <div className="post-block">
+        <div className="post-header">
+          <div className="post-user-info">
+            <div className="user-avatar">
+              {post.username.substring(0, 2).toUpperCase()}
+            </div>
+            <div className="user-details">
+              <span className="post-username">{post.username}</span>
+              <span className="post-time">{formatTime(post.created_at)}</span>
+            </div>
+          </div>
+          <button 
+            onClick={() => onReport(post.id)}
+            className="action-btn report-btn"
+            title="Report this post"
+          >
+            <span className="btn-icon">🚩</span>
+          </button>
+        </div>
+        
+        <PostContent content={post.content} />
+        
+        {/* PROFESSIONAL ACTION BUTTONS */}
+        <div className="post-actions">
+          <button
+            onClick={() => onReact(post.id, 'smack', false)}
+            className={`action-btn like-btn ${userReactions[post.id] === 'smack' ? 'active' : ''}`}
+          >
+            <span className="btn-icon">👍</span>
+            <span className="btn-text">{post.smacks || 0}</span>
+          </button>
+          
+          <button
+            onClick={() => onReact(post.id, 'cap', false)}
+            className={`action-btn dislike-btn ${userReactions[post.id] === 'cap' ? 'active' : ''}`}
+          >
+            <span className="btn-icon">👎</span>
+            <span className="btn-text">{post.caps || 0}</span>
+          </button>
+          
+          <button
+            onClick={() => onReply(post)}
+            className="action-btn reply-btn"
+          >
+            <span className="btn-icon">↩️</span>
+            <span className="btn-text">Reply</span>
+          </button>
+        </div>
+      </div>
+
+      {/* INLINE REPLY COMPOSER - SHOW UNDER THIS POST */}
+      {replyingTo && replyingTo.id === post.id && (
+        <div className="inline-reply-composer">
+          <PostComposer 
+            newPost={newPost}
+            setNewPost={setNewPost}
+            onSubmit={createPost}
+            onImageUpload={handleImageUpload}
+            hashtag={hashtag}
+            imageUploading={imageUploading}
+            replyingTo={replyingTo}
+            onCancelReply={onCancelReply}
+            inline={true}
+          />
+        </div>
+      )}
+
+      {/* REPLIES SECTION */}
+      {post.replies && post.replies.length > 0 && (
+        <div className="replies-section">
+          {visibleReplies.map(reply => (
+            <div key={reply.id} className="reply-block">
+              <div className="reply-header">
+                <div className="user-avatar small">
+                  {reply.username.substring(0, 2).toUpperCase()}
+                </div>
+                <span className="reply-username">{reply.username}</span>
+                <span className="reply-time">{formatTime(reply.created_at)}</span>
+                
+                <button 
+                  onClick={() => onReport(reply.id)}
+                  className="action-btn report-btn small"
+                  title="Report this reply"
+                >
+                  <span className="btn-icon">🚩</span>
+                </button>
+              </div>
+              
+              <PostContent content={reply.content} />
+              
+              {/* REPLY ACTIONS */}
+              <div className="reply-actions">
+                <button
+                  onClick={() => onReact(reply.id, 'smack', true)}
+                  className={`action-btn like-btn small ${userReactions[reply.id] === 'smack' ? 'active' : ''}`}
+                >
+                  <span className="btn-icon">👍</span>
+                  <span className="btn-text">{reply.smacks || 0}</span>
+                </button>
+                
+                <button
+                  onClick={() => onReact(reply.id, 'cap', true)}
+                  className={`action-btn dislike-btn small ${userReactions[reply.id] === 'cap' ? 'active' : ''}`}
+                >
+                  <span className="btn-icon">👎</span>
+                  <span className="btn-text">{reply.caps || 0}</span>
+                </button>
+                
+                <button
+                  onClick={() => onReply(reply)}
+                  className="action-btn reply-btn small"
+                >
+                  <span className="btn-icon">↩️</span>
+                  <span className="btn-text">Reply</span>
+                </button>
+              </div>
+
+              {/* INLINE REPLY COMPOSER FOR THIS REPLY */}
+              {replyingTo && replyingTo.id === reply.id && (
+                <div className="inline-reply-composer">
+                  <PostComposer 
+                    newPost={newPost}
+                    setNewPost={setNewPost}
+                    onSubmit={createPost}
+                    onImageUpload={handleImageUpload}
+                    hashtag={hashtag}
+                    imageUploading={imageUploading}
+                    replyingTo={replyingTo}
+                    onCancelReply={onCancelReply}
+                    inline={true}
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+          
+          {hasMoreReplies && (
+            <button
+              onClick={() => setShowAllReplies(!showAllReplies)}
+              className="show-more-btn"
+            >
+              <span className="btn-icon">{showAllReplies ? '🔼' : '🔽'}</span>
+              {showAllReplies ? 
+                'Show less' : 
+                `Show ${post.replies.length - 3} more replies`
+              }
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// SENTIMENT ANALYSIS COMPONENT
 function SentimentAnalysis({ hashtag, onClose }) {
   const [sentimentData, setSentimentData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -604,7 +862,6 @@ function SentimentAnalysis({ hashtag, onClose }) {
   };
 
   const getEmotionIcon = (emotion) => {
-    // Handle compound emotions like "positive (2), curious (1)"
     if (emotion && emotion.includes(',')) {
       return '🤔'; // Mixed emotions icon
     }
@@ -621,7 +878,6 @@ function SentimentAnalysis({ hashtag, onClose }) {
   };
 
   const getEmotionColor = (emotion) => {
-    // Handle compound emotions
     if (emotion && emotion.includes(',')) {
       return '#722ed1'; // Purple for mixed emotions
     }
@@ -638,7 +894,6 @@ function SentimentAnalysis({ hashtag, onClose }) {
   };
 
   const getEmotionLabel = (emotion) => {
-    // Handle compound emotions like "positive (2), curious (1)"
     if (emotion && emotion.includes(',')) {
       return emotion; // Display as-is for compound emotions
     }
@@ -664,8 +919,13 @@ function SentimentAnalysis({ hashtag, onClose }) {
       <div className="sentiment-overlay">
         <div className="sentiment-modal">
           <div className="sentiment-header">
-            <h2>Sentiment Analysis - #{hashtag}</h2>
-            <button onClick={onClose} className="close-button">×</button>
+            <h2>
+              <span className="btn-icon">📊</span>
+              Sentiment Analysis - #{hashtag}
+            </h2>
+            <button onClick={onClose} className="close-button">
+              <span className="btn-icon">✕</span>
+            </button>
           </div>
           <div className="loading">
             <div className="loading-spinner"></div>
@@ -681,8 +941,13 @@ function SentimentAnalysis({ hashtag, onClose }) {
       <div className="sentiment-overlay">
         <div className="sentiment-modal">
           <div className="sentiment-header">
-            <h2>Sentiment Analysis - #{hashtag}</h2>
-            <button onClick={onClose} className="close-button">×</button>
+            <h2>
+              <span className="btn-icon">📊</span>
+              Sentiment Analysis - #{hashtag}
+            </h2>
+            <button onClick={onClose} className="close-button">
+              <span className="btn-icon">✕</span>
+            </button>
           </div>
           <div className="error-message">{error}</div>
         </div>
@@ -694,8 +959,13 @@ function SentimentAnalysis({ hashtag, onClose }) {
     <div className="sentiment-overlay">
       <div className="sentiment-modal">
         <div className="sentiment-header">
-          <h2>Sentiment Analysis - #{hashtag}</h2>
-          <button onClick={onClose} className="close-button">×</button>
+          <h2>
+            <span className="btn-icon">📊</span>
+            Sentiment Analysis - #{hashtag}
+          </h2>
+          <button onClick={onClose} className="close-button">
+            <span className="btn-icon">✕</span>
+          </button>
         </div>
 
         {/* Summary Statistics */}
@@ -748,7 +1018,10 @@ function SentimentAnalysis({ hashtag, onClose }) {
               {post.replies_count > 0 && (
                 <div className="replies-sentiment">
                   <div className="replies-header">
-                    <span className="replies-count">{post.replies_count} replies</span>
+                    <span className="replies-count">
+                      <span className="btn-icon">↩️</span>
+                      {post.replies_count} replies
+                    </span>
                     <div className="replies-sentiment-badge" style={{ backgroundColor: getEmotionColor(post.overall_reply_emotion) }}>
                       {getEmotionIcon(post.overall_reply_emotion)} Average: {getEmotionLabel(post.overall_reply_emotion)}
                     </div>
@@ -797,207 +1070,6 @@ function SentimentAnalysis({ hashtag, onClose }) {
           ))}
         </div>
       </div>
-    </div>
-  );
-}
-
-// UPDATED PostsList - ADD onReport prop
-function PostsList({ posts, hashtag, onReact, onReply, onReport, userReactions }) {
-  if (posts.length === 0) {
-    return (
-      <div className="empty-state">
-        <h3>No posts yet</h3>
-        <p>Be the first to post in #{hashtag}</p>
-      </div>
-    );
-  }
-  
-  return (
-    <div className="posts-list">
-      {posts.map(post => (
-        <PostCard
-          key={post.id}
-          post={post}
-          onReact={onReact}
-          onReply={onReply}
-          onReport={onReport} // ADD REPORT PROP
-          userReactions={userReactions}
-        />
-      ))}
-    </div>
-  );
-}
-
-// COMPLETELY UPDATED PostCard - REPLY BUTTONS INSIDE EACH POST/REPLY + REPORT FEATURE
-function PostCard({ post, onReact, onReply, onReport, userReactions }) {
-  const [showAllReplies, setShowAllReplies] = useState(false);
-  
-  const formatTime = (timestamp) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffInMinutes = Math.floor((now - date) / 1000 / 60);
-    
-    if (diffInMinutes < 1) return 'now';
-    if (diffInMinutes < 60) return `${diffInMinutes}m`;
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h`;
-    return `${Math.floor(diffInMinutes / 1440)}d`;
-  };
-
-  const visibleReplies = showAllReplies ? (post.replies || []) : (post.replies || []).slice(0, 3);
-  const hasMoreReplies = (post.replies || []).length > 3;
-
-  return (
-    <div className="post-card">
-      {/* MAIN POST BLOCK */}
-      <div className="main-post-block">
-        <div className="post-header">
-          <div className="post-user-info">
-            <div className="user-avatar">
-              {post.username.substring(0, 2).toUpperCase()}
-            </div>
-            <div className="user-details">
-              <span className="post-username">{post.username}</span>
-              <span className="post-time">{formatTime(post.created_at)}</span>
-            </div>
-          </div>
-          {/* REPORT BUTTON FOR MAIN POST */}
-          <button 
-            onClick={() => onReport(post.id)}
-            className="report-button"
-            title="Report this post"
-          >
-            Report
-            {post.report_count >= 10 && ` (${post.report_count})`}
-          </button>
-        </div>
-        
-        <PostContent content={post.content} />
-        
-        {/* POST ACTIONS - REPLY BUTTON INSIDE POST */}
-        <div className="post-actions">
-          <div className="reaction-buttons">
-            <button
-              onClick={() => onReact(post.id, 'smack', false)}
-              className={`reaction-button ${userReactions[post.id] === 'smack' ? 'active' : ''}`}
-            >
-              Like {post.smacks || 0}
-            </button>
-            
-            <button
-              onClick={() => onReact(post.id, 'cap', false)}
-              className={`reaction-button ${userReactions[post.id] === 'cap' ? 'active' : ''}`}
-            >
-              Dislike {post.caps || 0}
-            </button>
-            
-            {/* REPLY BUTTON MOVED HERE! */}
-            <button
-              onClick={() => onReply(post)}
-              className="action-button"
-            >
-              Reply {post.replies?.length || 0}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* REPLIES SECTION */}
-      {post.replies && post.replies.length > 0 && (
-        <div className="replies-section">
-          {visibleReplies.map(reply => (
-            <div key={reply.id} className="reply-block">
-              <div className="reply-header">
-                <div className="user-avatar small">
-                  {reply.username.substring(0, 2).toUpperCase()}
-                </div>
-                <span className="reply-username">{reply.username}</span>
-                <span className="reply-time">{formatTime(reply.created_at)}</span>
-                
-                {/* REPORT BUTTON FOR EACH REPLY */}
-                <button 
-                  onClick={() => onReport(reply.id)}
-                  className="report-button small"
-                  title="Report this reply"
-                >
-                  Report
-                  {reply.report_count >= 10 && ` (${reply.report_count})`}
-                </button>
-              </div>
-              
-              <PostContent content={reply.content} />
-              
-              {/* REPLY ACTIONS - REPLY BUTTON INSIDE EACH REPLY */}
-              <div className="reply-actions">
-                <button
-                  onClick={() => onReact(reply.id, 'smack', true)}
-                  className={`reaction-button small ${userReactions[reply.id] === 'smack' ? 'active' : ''}`}
-                >
-                  Like {reply.smacks || 0}
-                </button>
-                
-                <button
-                  onClick={() => onReact(reply.id, 'cap', true)}
-                  className={`reaction-button small ${userReactions[reply.id] === 'cap' ? 'active' : ''}`}
-                >
-                  Dislike {reply.caps || 0}
-                </button>
-                
-                {/* REPLY BUTTON FOR REPLYING TO THIS REPLY */}
-                <button
-                  onClick={() => onReply(reply)}
-                  className="action-button small"
-                >
-                  Reply
-                </button>
-              </div>
-            </div>
-          ))}
-          
-          {hasMoreReplies && (
-            <button
-              onClick={() => setShowAllReplies(!showAllReplies)}
-              className="show-more-button"
-            >
-              {showAllReplies ? 
-                'Show less' : 
-                `Show ${post.replies.length - 3} more replies`
-              }
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Clean Post Content Renderer
-function PostContent({ content }) {
-  const parts = content.split(/\[VISUAL_BLOCKS\](.*?)\[\/VISUAL_BLOCKS\]/gs);
-  
-  return (
-    <div className="post-content">
-      {parts.map((part, index) => {
-        if (index % 2 === 1) {
-          return (
-            <div 
-              key={index}
-              dangerouslySetInnerHTML={{ __html: part }}
-              className="minecraft-render"
-            />
-          );
-        } else {
-          return (
-            <div key={index} className="text-content">
-              {part.split('\n').map((line, lineIndex) => (
-                <React.Fragment key={lineIndex}>
-                  {line}
-                  {lineIndex < part.split('\n').length - 1 && <br />}
-                </React.Fragment>
-              ))}
-            </div>
-          );
-        }
-      })}
     </div>
   );
 }
