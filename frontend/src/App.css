@@ -1209,3 +1209,151 @@ body {
 .fade-in {
   animation: fadeIn 0.3s ease-out;
 }
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  margin-right: 8px;
+  background: rgba(142, 142, 147, 0.12);
+  border: 1px solid rgba(142, 142, 147, 0.2);
+  border-radius: 20px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px) saturate(180%);
+}
+
+.action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.action-btn.small {
+  padding: 8px 12px;
+  font-size: 12px;
+  margin-right: 6px;
+}
+
+/* Like Button */
+.like-btn:hover {
+  background: rgba(52, 199, 89, 0.15);
+  border-color: rgba(52, 199, 89, 0.4);
+  color: var(--accent-green);
+}
+
+.like-btn.active {
+  background: var(--accent-green);
+  color: white;
+  border-color: var(--accent-green);
+  box-shadow: 0 4px 12px rgba(52, 199, 89, 0.4);
+}
+
+/* Dislike Button */
+.dislike-btn:hover {
+  background: rgba(255, 69, 58, 0.15);
+  border-color: rgba(255, 69, 58, 0.4);
+  color: var(--accent-red);
+}
+
+.dislike-btn.active {
+  background: var(--accent-red);
+  color: white;
+  border-color: var(--accent-red);
+  box-shadow: 0 4px 12px rgba(255, 69, 58, 0.4);
+}
+
+/* Reply Button */
+.reply-btn:hover {
+  background: rgba(0, 122, 255, 0.15);
+  border-color: rgba(0, 122, 255, 0.4);
+  color: var(--accent-blue);
+}
+
+/* Report Button */
+.report-btn {
+  background: rgba(255, 149, 0, 0.1);
+  border-color: rgba(255, 149, 0, 0.2);
+  color: var(--accent-orange);
+  margin-left: auto;
+  margin-right: 0;
+  padding: 8px 12px;
+}
+
+.report-btn:hover {
+  background: rgba(255, 149, 0, 0.15);
+  border-color: rgba(255, 149, 0, 0.4);
+}
+
+/* Inline Reply Composer */
+.inline-reply-composer {
+  margin: 16px 20px 20px 20px;
+  padding: 16px;
+  background: var(--bg-tertiary);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.post-composer.inline {
+  margin: 0;
+  background: transparent;
+  box-shadow: none;
+  border: none;
+  padding: 0;
+}
+
+.reply-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0, 122, 255, 0.1);
+  padding: 10px 16px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(0, 122, 255, 0.2);
+}
+
+.reply-text {
+  color: var(--accent-blue);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.cancel-reply-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.cancel-reply-btn:hover {
+  background: rgba(255, 69, 58, 0.1);
+  color: var(--accent-red);
+}
+
+.show-more-btn {
+  background: none;
+  border: none;
+  color: var(--accent-blue);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px 0;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.show-more-btn:hover {
+  color: var(--accent-blue-hover);
+  transform: translateY(-1px);
+}
