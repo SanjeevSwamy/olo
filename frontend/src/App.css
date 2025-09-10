@@ -1143,4 +1143,71 @@ body {
     gap: 0.25rem;
   }
 }
+/* Add to your existing App.css */
+
+/* Report Button Styles */
+.report-button {
+  background: var(--accent-red);
+  color: white;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  margin-left: auto;
+}
+
+.report-button:hover {
+  background: #cc3333;
+  transform: translateY(-1px);
+}
+
+.report-button.small {
+  padding: 0.2rem 0.4rem;
+  font-size: 0.7rem;
+}
+
+/* Update Post Header Layout */
+.post-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.reply-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Improve Block Separation */
+.main-post-block {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 1rem;
+}
+
+.reply-block {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.reply-block:last-child {
+  margin-bottom: 0;
+}
+
+/* Remove maxLength char counter styling update */
+.char-count {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: normal;
+}
+
 
