@@ -14,6 +14,7 @@ function App() {
   const [imageUploading, setImageUploading] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
   const [userReactions, setUserReactions] = useState({});
+  const [showSentimentAnalysis, setShowSentimentAnalysis] = useState(false);
   
   const fileInputRef = React.useRef(null);
   const hashtags = ['General', 'Trip', 'CollegeEvents', 'Studies', 'Memes', 'Jobs', 'Confessions', 'Sports'];
@@ -81,26 +82,6 @@ function App() {
       }
     }
   }, []);
-
-  // Add this state to your App component
-const [showSentimentAnalysis, setShowSentimentAnalysis] = useState(false);
-
-// Update your Navigation component call
-<Navigation 
-  hashtags={hashtags}
-  currentHashtag={currentHashtag}
-  onHashtagChange={setCurrentHashtag}
-  onShowSentiment={() => setShowSentimentAnalysis(true)}
-/>
-
-// Add the sentiment analysis component in your return statement
-{showSentimentAnalysis && (
-  <SentimentAnalysis 
-    hashtag={currentHashtag}
-    onClose={() => setShowSentimentAnalysis(false)}
-  />
-)}
-
 
   // Image resize function
   const resizeImage = (file, maxWidth = 300, maxHeight = 300, quality = 0.8) => {
@@ -296,6 +277,7 @@ const [showSentimentAnalysis, setShowSentimentAnalysis] = useState(false);
         hashtags={hashtags}
         currentHashtag={currentHashtag}
         onHashtagChange={setCurrentHashtag}
+        onShowSentiment={() => setShowSentimentAnalysis(true)}
       />
       
       <main className="main-content">
@@ -324,11 +306,18 @@ const [showSentimentAnalysis, setShowSentimentAnalysis] = useState(false);
           userReactions={userReactions}
         />
       </main>
+
+      {showSentimentAnalysis && (
+        <SentimentAnalysis 
+          hashtag={currentHashtag}
+          onClose={() => setShowSentimentAnalysis(false)}
+        />
+      )}
     </div>
   );
 }
 
-// Clean Login Component - NO MORE AI EMOJIS!
+// Clean Login Component
 function LoginPage({ onLogin, loading }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -434,7 +423,7 @@ function LoginPage({ onLogin, loading }) {
   );
 }
 
-// Clean Header - Professional Look
+// Clean Header
 function Header({ username, onLogout }) {
   return (
     <header className="header">
@@ -457,9 +446,8 @@ function Header({ username, onLogout }) {
   );
 }
 
-// Clean Navigation - No Emojis
-// Renamed to avoid conflict
-function AppNavigation({ hashtags, currentHashtag, onHashtagChange, onShowSentiment }) {
+// FIXED: Single Navigation Component
+function Navigation({ hashtags, currentHashtag, onHashtagChange, onShowSentiment }) {
   return (
     <nav className="navigation">
       <div className="nav-content">
@@ -486,6 +474,7 @@ function AppNavigation({ hashtags, currentHashtag, onHashtagChange, onShowSentim
   );
 }
 
+// Sentiment Analysis Component
 function SentimentAnalysis({ hashtag, onClose }) {
   const [sentimentData, setSentimentData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -701,36 +690,7 @@ function SentimentAnalysis({ hashtag, onClose }) {
   );
 }
 
-// Update your Navigation component to include sentiment analysis button
-function Navigation({ hashtags, currentHashtag, onHashtagChange, onShowSentiment }) {
-  return (
-    <nav className="navigation">
-      <div className="nav-content">
-        <div className="nav-tabs">
-          {hashtags.map(tag => (
-            <button
-              key={tag}
-              onClick={() => onHashtagChange(tag)}
-              className={`nav-tab ${currentHashtag === tag ? 'active' : ''}`}
-            >
-              #{tag}
-            </button>
-          ))}
-          <button
-            onClick={onShowSentiment}
-            className="nav-tab sentiment-tab"
-            title="View sentiment analysis for this hashtag"
-          >
-            📊 Sentiment Analysis
-          </button>
-        </div>
-      </div>
-    </nav>
-  );
-}
-
-
-// Clean Post Composer - Professional
+// Clean Post Composer
 function PostComposer({ newPost, setNewPost, onSubmit, onImageUpload, hashtag, imageUploading, replyingTo, onCancelReply }) {
   const fileInputRef = React.useRef(null);
 
@@ -849,7 +809,7 @@ function PostsList({ posts, hashtag, onReact, onReply, userReactions }) {
   );
 }
 
-// Clean Post Card - Professional Design
+// Clean Post Card
 function PostCard({ post, onReact, onReply, userReactions }) {
   const [showAllReplies, setShowAllReplies] = useState(false);
 
