@@ -82,6 +82,26 @@ function App() {
     }
   }, []);
 
+  // Add this state to your App component
+const [showSentimentAnalysis, setShowSentimentAnalysis] = useState(false);
+
+// Update your Navigation component call
+<Navigation 
+  hashtags={hashtags}
+  currentHashtag={currentHashtag}
+  onHashtagChange={setCurrentHashtag}
+  onShowSentiment={() => setShowSentimentAnalysis(true)}
+/>
+
+// Add the sentiment analysis component in your return statement
+{showSentimentAnalysis && (
+  <SentimentAnalysis 
+    hashtag={currentHashtag}
+    onClose={() => setShowSentimentAnalysis(false)}
+  />
+)}
+
+
   // Image resize function
   const resizeImage = (file, maxWidth = 300, maxHeight = 300, quality = 0.8) => {
     return new Promise((resolve) => {
@@ -457,6 +477,251 @@ function Navigation({ hashtags, currentHashtag, onHashtagChange }) {
     </nav>
   );
 }
+// Add this component to your App.js
+
+function SentimentAnalysis({ hashtag, onClose }) {
+  const [sentimentData, setSentimentData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchSentimentData();
+  }, [hashtag]);
+
+  const fetchSentimentData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`${API_BASE}/sentiment-analysis/${hashtag}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSentimentData(data);
+      } else if (response.status === 401) {
+        alert('Session expired. Please login again.');
+        window.location.reload();
+      } else {
+        throw new Error('Failed to fetch sentiment data');
+      }
+    } catch (error) {
+      console.error('Error fetching sentiment data:', error);
+      setError('Failed to load sentiment analysis');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getEmotionIcon = (emotion) => {
+    switch (emotion) {
+      case 'positive': case 'joy': return '😊';
+      case 'negative': case 'sadness': case 'anger': case 'fear': return '😞';
+      case 'neutral': case 'curiosity': case 'admiration': return '😐';
+      case 'no_replies': return '💭';
+      case 'unknown': case null: return '❓';
+      default: return '🤔';
+    }
+  };
+
+  const getEmotionColor = (emotion) => {
+    switch (emotion) {
+      case 'positive': case 'joy': return '#52c41a';
+      case 'negative': case 'sadness': case 'anger': case 'fear': return '#ff4d4f';
+      case 'neutral': case 'curiosity': case 'admiration': return '#faad14';
+      case 'no_replies': return '#8c8c8c';
+      case 'unknown': case null: return '#d9d9d9';
+      default: return '#722ed1';
+    }
+  };
+
+  const getEmotionLabel = (emotion) => {
+    switch (emotion) {
+      case 'positive': case 'joy': return 'Positive';
+      case 'negative': return 'Negative';
+      case 'sadness': return 'Sad';
+      case 'anger': return 'Angry';
+      case 'fear': return 'Fearful';
+      case 'neutral': return 'Neutral';
+      case 'curiosity': return 'Curious';
+      case 'admiration': return 'Admiring';
+      case 'no_replies': return 'No Replies';
+      case 'unknown': case null: return 'Unknown';
+      default: return emotion || 'Unknown';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="sentiment-overlay">
+        <div className="sentiment-modal">
+          <div className="sentiment-header">
+            <h2>Sentiment Analysis - #{hashtag}</h2>
+            <button onClick={onClose} className="close-button">×</button>
+          </div>
+          <div className="loading">
+            <div className="loading-spinner"></div>
+            Analyzing post emotions...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="sentiment-overlay">
+        <div className="sentiment-modal">
+          <div className="sentiment-header">
+            <h2>Sentiment Analysis - #{hashtag}</h2>
+            <button onClick={onClose} className="close-button">×</button>
+          </div>
+          <div className="error-message">{error}</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="sentiment-overlay">
+      <div className="sentiment-modal">
+        <div className="sentiment-header">
+          <h2>Sentiment Analysis - #{hashtag}</h2>
+          <button onClick={onClose} className="close-button">×</button>
+        </div>
+
+        {/* Summary Statistics */}
+        <div className="sentiment-summary">
+          <div className="summary-card">
+            <h3>Post Emotions Overview</h3>
+            <div className="stats-grid">
+              <div className="stat-item">
+                <span className="stat-value">{sentimentData.summary.total}</span>
+                <span className="stat-label">Total Posts</span>
+              </div>
+              <div className="stat-item positive">
+                <span className="stat-value">{sentimentData.summary.positive}</span>
+                <span className="stat-label">😊 Positive</span>
+              </div>
+              <div className="stat-item negative">
+                <span className="stat-value">{sentimentData.summary.negative}</span>
+                <span className="stat-label">😞 Negative</span>
+              </div>
+              <div className="stat-item neutral">
+                <span className="stat-value">{sentimentData.summary.neutral}</span>
+                <span className="stat-label">😐 Neutral</span>
+              </div>
+              <div className="stat-item unknown">
+                <span className="stat-value">{sentimentData.summary.unknown}</span>
+                <span className="stat-label">❓ Unknown</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Posts List */}
+        <div className="sentiment-posts">
+          {sentimentData.posts.map((post, index) => (
+            <div key={post.post_id} className="sentiment-post-card">
+              <div className="post-header">
+                <div className="post-info">
+                  <span className="post-author">{post.username}</span>
+                  <span className="post-time">{new Date(post.created_at).toLocaleString()}</span>
+                </div>
+                <div className="emotion-badge" style={{ backgroundColor: getEmotionColor(post.post_emotion) }}>
+                  {getEmotionIcon(post.post_emotion)} {getEmotionLabel(post.post_emotion)}
+                </div>
+              </div>
+              
+              <div className="post-content-preview">
+                {post.content}
+              </div>
+              
+              {post.replies_count > 0 && (
+                <div className="replies-sentiment">
+                  <div className="replies-header">
+                    <span className="replies-count">{post.replies_count} replies</span>
+                    <div className="replies-sentiment-badge" style={{ backgroundColor: getEmotionColor(post.overall_reply_emotion) }}>
+                      {getEmotionIcon(post.overall_reply_emotion)} Average: {getEmotionLabel(post.overall_reply_emotion)}
+                    </div>
+                  </div>
+                  
+                  <div className="reply-breakdown">
+                    {post.reply_breakdown.positive > 0 && (
+                      <span className="breakdown-item positive">😊 {post.reply_breakdown.positive}</span>
+                    )}
+                    {post.reply_breakdown.negative > 0 && (
+                      <span className="breakdown-item negative">😞 {post.reply_breakdown.negative}</span>
+                    )}
+                    {post.reply_breakdown.neutral > 0 && (
+                      <span className="breakdown-item neutral">😐 {post.reply_breakdown.neutral}</span>
+                    )}
+                    {post.reply_breakdown.unknown > 0 && (
+                      <span className="breakdown-item unknown">❓ {post.reply_breakdown.unknown}</span>
+                    )}
+                  </div>
+                  
+                  {post.reply_details.length > 0 && (
+                    <details className="reply-details">
+                      <summary>View individual reply emotions</summary>
+                      <div className="reply-list">
+                        {post.reply_details.map((reply, idx) => (
+                          <div key={idx} className="reply-item">
+                            <span className="reply-sentiment" style={{ color: getEmotionColor(reply.emotion) }}>
+                              {getEmotionIcon(reply.emotion)}
+                            </span>
+                            <span className="reply-content">{reply.content}</span>
+                            <span className="reply-author">- {reply.username}</span>
+                            <span className="reply-emotion-label">({getEmotionLabel(reply.emotion)})</span>
+                          </div>
+                        ))}
+                        {post.replies_count > post.reply_details.length && (
+                          <div className="more-replies">
+                            +{post.replies_count - post.reply_details.length} more replies
+                          </div>
+                        )}
+                      </div>
+                    </details>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Update your Navigation component to include sentiment analysis button
+function Navigation({ hashtags, currentHashtag, onHashtagChange, onShowSentiment }) {
+  return (
+    <nav className="navigation">
+      <div className="nav-content">
+        <div className="nav-tabs">
+          {hashtags.map(tag => (
+            <button
+              key={tag}
+              onClick={() => onHashtagChange(tag)}
+              className={`nav-tab ${currentHashtag === tag ? 'active' : ''}`}
+            >
+              #{tag}
+            </button>
+          ))}
+          <button
+            onClick={onShowSentiment}
+            className="nav-tab sentiment-tab"
+            title="View sentiment analysis for this hashtag"
+          >
+            📊 Sentiment Analysis
+          </button>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
 
 // Clean Post Composer - Professional
 function PostComposer({ newPost, setNewPost, onSubmit, onImageUpload, hashtag, imageUploading, replyingTo, onCancelReply }) {
