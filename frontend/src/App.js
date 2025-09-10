@@ -12,7 +12,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [loadingReactions, setLoadingReactions] = useState({});
   const [imageUploading, setImageUploading] = useState(false);
-  const [replyingTo, setReplyingTo] = useState(null);
+  const [replyingTo, setReplyingTo] = useState(null); // Track which post/reply is being replied to
   const [userReactions, setUserReactions] = useState({});
   const [showSentimentAnalysis, setShowSentimentAnalysis] = useState(false);
   
@@ -477,8 +477,7 @@ function Header({ username, onLogout }) {
             <span className="status">Online</span>
           </span>
           <button onClick={onLogout} className="logout-button">
-            <span className="btn-icon">🚪</span>
-            Sign Out
+            🚪 Sign Out
           </button>
         </div>
       </div>
@@ -506,8 +505,7 @@ function Navigation({ hashtags, currentHashtag, onHashtagChange, onShowSentiment
             className="nav-tab sentiment-tab"
             title="View sentiment analysis for this hashtag"
           >
-            <span className="btn-icon">📊</span>
-            Sentiment Analysis
+            📊 Sentiment Analysis
           </button>
         </div>
       </div>
@@ -524,11 +522,10 @@ function PostComposer({ newPost, setNewPost, onSubmit, onImageUpload, hashtag, i
       {replyingTo && (
         <div className="reply-indicator">
           <span className="reply-text">
-            <span className="btn-icon">↩️</span>
-            Replying to @{replyingTo.username}
+            ↩️ Replying to @{replyingTo.username}
           </span>
           <button onClick={onCancelReply} className="cancel-reply-btn">
-            <span className="btn-icon">✕</span>
+            ✕
           </button>
         </div>
       )}
@@ -550,8 +547,7 @@ function PostComposer({ newPost, setNewPost, onSubmit, onImageUpload, hashtag, i
               className="tool-btn"
               title="Upload image"
             >
-              <span className="btn-icon">📸</span>
-              <span className="btn-text">{imageUploading ? 'Converting...' : 'Image'}</span>
+              📸 {imageUploading ? 'Converting...' : 'Image'}
             </button>
             
             <input
@@ -572,8 +568,7 @@ function PostComposer({ newPost, setNewPost, onSubmit, onImageUpload, hashtag, i
               disabled={!newPost.trim() || imageUploading}
               className="submit-btn"
             >
-              <span className="btn-icon">{replyingTo ? '↩️' : '📝'}</span>
-              <span className="btn-text">{replyingTo ? 'Reply' : 'Post'}</span>
+              {replyingTo ? '↩️ Reply' : '📝 Post'}
             </button>
           </div>
         </div>
@@ -650,7 +645,7 @@ function PostsList({ posts, hashtag, onReact, onReply, onReport, userReactions, 
   );
 }
 
-// POST CARD COMPONENT
+// POST CARD COMPONENT WITH INLINE REPLY AND REPORT BUTTONS
 function PostCard({ post, onReact, onReply, onReport, userReactions, replyingTo, newPost, setNewPost, createPost, onCancelReply, handleImageUpload, imageUploading, hashtag }) {
   const [showAllReplies, setShowAllReplies] = useState(false);
   
@@ -682,41 +677,39 @@ function PostCard({ post, onReact, onReply, onReport, userReactions, replyingTo,
               <span className="post-time">{formatTime(post.created_at)}</span>
             </div>
           </div>
+          {/* REPORT BUTTON FOR MAIN POST */}
           <button 
             onClick={() => onReport(post.id)}
             className="action-btn report-btn"
             title="Report this post"
           >
-            <span className="btn-icon">🚩</span>
+            🚩 Report{post.report_count >= 10 && ` (${post.report_count})`}
           </button>
         </div>
         
         <PostContent content={post.content} />
         
-        {/* PROFESSIONAL ACTION BUTTONS */}
+        {/* PROFESSIONAL ACTION BUTTONS WITH EMOJIS */}
         <div className="post-actions">
           <button
             onClick={() => onReact(post.id, 'smack', false)}
             className={`action-btn like-btn ${userReactions[post.id] === 'smack' ? 'active' : ''}`}
           >
-            <span className="btn-icon">👍</span>
-            <span className="btn-text">{post.smacks || 0}</span>
+            👍 {post.smacks || 0}
           </button>
           
           <button
             onClick={() => onReact(post.id, 'cap', false)}
             className={`action-btn dislike-btn ${userReactions[post.id] === 'cap' ? 'active' : ''}`}
           >
-            <span className="btn-icon">👎</span>
-            <span className="btn-text">{post.caps || 0}</span>
+            👎 {post.caps || 0}
           </button>
           
           <button
             onClick={() => onReply(post)}
             className="action-btn reply-btn"
           >
-            <span className="btn-icon">↩️</span>
-            <span className="btn-text">Reply</span>
+            ↩️ Reply
           </button>
         </div>
       </div>
@@ -750,41 +743,39 @@ function PostCard({ post, onReact, onReply, onReport, userReactions, replyingTo,
                 <span className="reply-username">{reply.username}</span>
                 <span className="reply-time">{formatTime(reply.created_at)}</span>
                 
+                {/* REPORT BUTTON FOR EACH REPLY */}
                 <button 
                   onClick={() => onReport(reply.id)}
                   className="action-btn report-btn small"
                   title="Report this reply"
                 >
-                  <span className="btn-icon">🚩</span>
+                  🚩{reply.report_count >= 10 && ` (${reply.report_count})`}
                 </button>
               </div>
               
               <PostContent content={reply.content} />
               
-              {/* REPLY ACTIONS */}
+              {/* REPLY ACTIONS WITH EMOJIS */}
               <div className="reply-actions">
                 <button
                   onClick={() => onReact(reply.id, 'smack', true)}
                   className={`action-btn like-btn small ${userReactions[reply.id] === 'smack' ? 'active' : ''}`}
                 >
-                  <span className="btn-icon">👍</span>
-                  <span className="btn-text">{reply.smacks || 0}</span>
+                  👍 {reply.smacks || 0}
                 </button>
                 
                 <button
                   onClick={() => onReact(reply.id, 'cap', true)}
                   className={`action-btn dislike-btn small ${userReactions[reply.id] === 'cap' ? 'active' : ''}`}
                 >
-                  <span className="btn-icon">👎</span>
-                  <span className="btn-text">{reply.caps || 0}</span>
+                  👎 {reply.caps || 0}
                 </button>
                 
                 <button
                   onClick={() => onReply(reply)}
                   className="action-btn reply-btn small"
                 >
-                  <span className="btn-icon">↩️</span>
-                  <span className="btn-text">Reply</span>
+                  ↩️ Reply
                 </button>
               </div>
 
@@ -812,11 +803,7 @@ function PostCard({ post, onReact, onReply, onReport, userReactions, replyingTo,
               onClick={() => setShowAllReplies(!showAllReplies)}
               className="show-more-btn"
             >
-              <span className="btn-icon">{showAllReplies ? '🔼' : '🔽'}</span>
-              {showAllReplies ? 
-                'Show less' : 
-                `Show ${post.replies.length - 3} more replies`
-              }
+              {showAllReplies ? '🔼 Show less' : `🔽 Show ${post.replies.length - 3} more replies`}
             </button>
           )}
         </div>
@@ -825,8 +812,9 @@ function PostCard({ post, onReact, onReply, onReport, userReactions, replyingTo,
   );
 }
 
-// SENTIMENT ANALYSIS COMPONENT
+// SENTIMENT ANALYSIS COMPONENT (keep existing code)
 function SentimentAnalysis({ hashtag, onClose }) {
+  // ... existing sentiment analysis code with emojis in buttons
   const [sentimentData, setSentimentData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -863,7 +851,7 @@ function SentimentAnalysis({ hashtag, onClose }) {
 
   const getEmotionIcon = (emotion) => {
     if (emotion && emotion.includes(',')) {
-      return '🤔'; // Mixed emotions icon
+      return '🤔';
     }
     
     switch (emotion) {
@@ -879,7 +867,7 @@ function SentimentAnalysis({ hashtag, onClose }) {
 
   const getEmotionColor = (emotion) => {
     if (emotion && emotion.includes(',')) {
-      return '#722ed1'; // Purple for mixed emotions
+      return '#722ed1';
     }
     
     switch (emotion) {
@@ -895,7 +883,7 @@ function SentimentAnalysis({ hashtag, onClose }) {
 
   const getEmotionLabel = (emotion) => {
     if (emotion && emotion.includes(',')) {
-      return emotion; // Display as-is for compound emotions
+      return emotion;
     }
     
     switch (emotion) {
@@ -919,13 +907,8 @@ function SentimentAnalysis({ hashtag, onClose }) {
       <div className="sentiment-overlay">
         <div className="sentiment-modal">
           <div className="sentiment-header">
-            <h2>
-              <span className="btn-icon">📊</span>
-              Sentiment Analysis - #{hashtag}
-            </h2>
-            <button onClick={onClose} className="close-button">
-              <span className="btn-icon">✕</span>
-            </button>
+            <h2>📊 Sentiment Analysis - #{hashtag}</h2>
+            <button onClick={onClose} className="close-button">✕</button>
           </div>
           <div className="loading">
             <div className="loading-spinner"></div>
@@ -941,13 +924,8 @@ function SentimentAnalysis({ hashtag, onClose }) {
       <div className="sentiment-overlay">
         <div className="sentiment-modal">
           <div className="sentiment-header">
-            <h2>
-              <span className="btn-icon">📊</span>
-              Sentiment Analysis - #{hashtag}
-            </h2>
-            <button onClick={onClose} className="close-button">
-              <span className="btn-icon">✕</span>
-            </button>
+            <h2>📊 Sentiment Analysis - #{hashtag}</h2>
+            <button onClick={onClose} className="close-button">✕</button>
           </div>
           <div className="error-message">{error}</div>
         </div>
@@ -959,16 +937,10 @@ function SentimentAnalysis({ hashtag, onClose }) {
     <div className="sentiment-overlay">
       <div className="sentiment-modal">
         <div className="sentiment-header">
-          <h2>
-            <span className="btn-icon">📊</span>
-            Sentiment Analysis - #{hashtag}
-          </h2>
-          <button onClick={onClose} className="close-button">
-            <span className="btn-icon">✕</span>
-          </button>
+          <h2>📊 Sentiment Analysis - #{hashtag}</h2>
+          <button onClick={onClose} className="close-button">✕</button>
         </div>
 
-        {/* Summary Statistics */}
         <div className="sentiment-summary">
           <div className="summary-card">
             <h3>Post Emotions Overview</h3>
@@ -997,7 +969,6 @@ function SentimentAnalysis({ hashtag, onClose }) {
           </div>
         </div>
 
-        {/* Posts List */}
         <div className="sentiment-posts">
           {sentimentData.posts.map((post, index) => (
             <div key={post.post_id} className="sentiment-post-card">
@@ -1019,8 +990,7 @@ function SentimentAnalysis({ hashtag, onClose }) {
                 <div className="replies-sentiment">
                   <div className="replies-header">
                     <span className="replies-count">
-                      <span className="btn-icon">↩️</span>
-                      {post.replies_count} replies
+                      ↩️ {post.replies_count} replies
                     </span>
                     <div className="replies-sentiment-badge" style={{ backgroundColor: getEmotionColor(post.overall_reply_emotion) }}>
                       {getEmotionIcon(post.overall_reply_emotion)} Average: {getEmotionLabel(post.overall_reply_emotion)}
